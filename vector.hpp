@@ -131,12 +131,26 @@ class vector {
 			this->_size--;
 		}
 
-		iterator insert (iterator position, const value_type& val) {}
+		iterator insert (iterator position, const value_type& val) {
+			if (this->_size + 1 < this->_capacity) {
+				pointer tmp = this->_alloc.allocate(this->_capacity);
+				for (size_type i = 0; i < this->_size + 1; ++i) {
 
-		void insert (iterator position, size_type n, const value_type& val) {}
+				}
+				this->_alloc.deallocate(this->_array, this->_capacity);
+				this->_size++;
+				this->_alloc.allocate(this->_capacity);
+				for (size_type i = 0; i < this->_size; ++i)
+					this->_alloc.construct(&_array[i], tmp[i]);
+				this->_alloc.deallocate(tmp, this->_capacity);
+			}
+			return position;
+		}
+
+//		void insert (iterator position, size_type n, const value_type& val) {}
 
 		template <class InputIterator>
-		void insert (iterator position, InputIterator first, InputIterator last) {}
+//		void insert (iterator position, InputIterator first, InputIterator last) {}
 
 		iterator erase (iterator position) {
 
