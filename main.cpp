@@ -50,17 +50,17 @@ void ftVector() {
 	v.push_back("VECTOR ");
 	std::cout << v.size() << std::endl;
 	v.push_back("compiles ");
-	std::cout << "HERE: " << v.front() << std::endl;
+	std::cout << "HERE: " << v.back() << std::endl;
 	v.push_back("successfully! ");
-	std::cout << "HERE: " << v.front() << std::endl;
+	std::cout << "HERE: " << v.back() << std::endl;
 	v.push_back("Go ");
-	std::cout << "HERE: " << v.front() << std::endl;
+	std::cout << "HERE: " << v.back() << std::endl;
 	v.push_back("check ");
-	std::cout << "HERE: " << v.front() << std::endl;
+	std::cout << "HERE: " << v.back() << std::endl;
 	v.push_back("unit ");
-	std::cout << "HERE: " << v.front() << std::endl;
+	std::cout << "HERE: " << v.back() << std::endl;
 	v.push_back("tests!");
-	std::cout << "HERE: " << v.front() << std::endl;
+	std::cout << "HERE: " << v.back() << std::endl;
 
 	ft::vector<std::string>::iterator itv;
 	ft::vector<std::string>::iterator itve = v.end();

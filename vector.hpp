@@ -20,20 +20,24 @@ class vector {
 		class   reverse_iterator;
 		class   const_reverse_iterator;
 		//constructor:
-		explicit vector (const allocator_type& alloc = allocator_type()): _size(0), _capacity(0), _array(0), _alloc(alloc) {}
+		explicit vector (const allocator_type& alloc = allocator_type()): _size(0), _capacity(0), _array(nullptr), _alloc(alloc) {}
 
 		explicit vector (size_type n, const value_type& val = value_type(),
-		                 const allocator_type& alloc = allocator_type()) {
-			this->_array = this->_alloc.allocate(n);
-			for (size_type i = 0; i < n; ++i)
-				push_back(val);
+		                 const allocator_type& alloc = allocator_type()): _size(n), _capacity(this->_size), _array(nullptr), _alloc(alloc) {
+			this->_array = this->_alloc.allocate(this->_capacity);
+			for (size_type i = 0; i < this->_size; ++i)
+				this->_alloc.contruct(this->_array + i, val);
 		}
 
 		template <class InputIterator>
 		vector (InputIterator first, InputIterator last,
 		        const allocator_type& alloc = allocator_type()) {}
 
-		vector (const vector& x) {}
+//		vector (const vector& x): _size(x._size), _capacity(x._capacity), _array(x._array), _alloc(x._alloc) {
+//			this->_array = this->_alloc.allocate(this->_capacity);
+//			for (size_type i = 0; i < this->_size; ++i)
+//				this->_alloc.contruct(this->_array + i, val);
+//		}
 
 		//destructor:
 		~vector() {}
@@ -66,10 +70,11 @@ class vector {
 
 		void resize (size_type n, value_type val = value_type()) {
 			if (n < this->_size)
-				for (; this->_size != n; this->_size--)
+				for (;this->_size >= n;)
 					pop_back();
 			else if (n > this->_size) {
-				for (; this->_size != n; this->_size++)
+				std::cout << "HERE" << std::endl;
+				for (;this->_size <= n;)
 					push_back(val);
 			}
 		}
@@ -82,10 +87,13 @@ class vector {
 			if (n > this->_capacity) {
 				pointer tmp = this->_alloc.allocate(n);
 				for (size_type i = 0; i < this->_size; ++i)
-					tmp[i] = this->_array[i];
+					this->_alloc.construct(&tmp[i], this->_array[i]);
 				this->_alloc.deallocate(this->_array, this->_capacity);
 				this->_capacity = n;
-				this->_array = tmp;
+				this->_array = this->_alloc.allocate(this->_capacity);
+				for (size_type i = 0; i < this->_size; ++i)
+					this->_alloc.construct(&_array[i], tmp[i]);
+				this->_alloc.deallocate(tmp, this->_capacity);
 			}
 		}
 
@@ -100,8 +108,8 @@ class vector {
 		reference front() { return *_array; }
 		const_reference front() const { return *_array; }
 
-		reference back() { return *(this->_array - this->_size - 1); }
-		const_reference back() const { return *(this->_array - this->_size - 1); }
+		reference back() { return *(this->_array + this->_size - 1); }
+		const_reference back() const { return *(this->_array + this->_size - 1); }
 
 		//Modifiters:
 
@@ -113,7 +121,7 @@ class vector {
 
 		void push_back (const value_type& val) {
 			if (this->_size + 1 >= this->_capacity) {
-				reserve(this->_capacity + (this->_capacity / 2));
+				reserve(this->_capacity + 15);
 			}
 			this->_array[_size] = val;
 			this->_size++;
