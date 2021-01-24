@@ -40,10 +40,18 @@ class vector {
 //		}
 
 		//destructor:
-		~vector() {}
+		~vector() {
+		    clear();
+		    if (this->_capacity)
+		        this->_alloc.deallocate(this->_array, this->_capacity);
+		    this->_capacity = 0;
+		}
 
 		//operator=:
-		vector& operator= (const vector& x);
+		vector& operator= (const vector& x) {
+            insert(begin(), x.begin(), x.end());
+            return *this;
+		}
 
 		//Member function:
 		iterator begin() { return iterator(this->_array); }
@@ -99,11 +107,25 @@ class vector {
 
 		//element access:
 
-		reference operator[] (size_type n);
-		const_reference operator[] (size_type n) const;
+		reference operator[] (size_type n) {
+		    at(n);
+		    return this->_array[n];
+		}
+		const_reference operator[] (size_type n) const {
+		    at(n);
+		    return this->_array[n];
+		}
 
-		reference at (size_type n);
-		const_reference at (size_type n) const;
+		reference at (size_type n) {
+		    if (this->_size < n)
+		        throw std::out_of_range("out of range");
+		    return this->_array[n];
+		}
+		const_reference at (size_type n) const {
+		    if (this->_size < n)
+		        throw std::out_of_range("out of range");
+		    return this->_array[n];
+		}
 
 		reference front() { return *_array; }
 		const_reference front() const { return *_array; }
@@ -115,9 +137,17 @@ class vector {
 
 
 		template <class InputIterator>
-		void assign (InputIterator first, InputIterator last) {}
+		void assign (InputIterator first, InputIterator last) {
+		    clear();
+		    for (; first != last; ++first)
+		        push_back(*first);
+		}
 
-		void assign (size_type n, const value_type& val) {}
+		void assign (size_type n, const value_type& val) {
+		    clear();
+		    for (; n != 0; --n)
+		        push_back(val);
+		}
 
 		void push_back (const value_type& val) {
 			if (this->_size + 1 >= this->_capacity) {
@@ -132,38 +162,72 @@ class vector {
 		}
 
 		iterator insert (iterator position, const value_type& val) {
-			if (this->_size + 1 < this->_capacity) {
-				pointer tmp = this->_alloc.allocate(this->_capacity);
-				for (size_type i = 0; i < this->_size + 1; ++i) {
-
-				}
-				this->_alloc.deallocate(this->_array, this->_capacity);
-				this->_size++;
-				this->_alloc.allocate(this->_capacity);
-				for (size_type i = 0; i < this->_size; ++i)
-					this->_alloc.construct(&_array[i], tmp[i]);
-				this->_alloc.deallocate(tmp, this->_capacity);
-			}
-			return position;
+			difference_type it_end = end().getElement() - begin().getElement();
+			difference_type it_pos = position.getElement() - begin().getElement();
+			if (this->_size + 1 > this->_capacity)
+			    reserve(this->_capacity + 15);
+			for (difference_type i = it_end; i != it_pos; --i)
+			    this->_array[i] = this->_array[i - 1];
+			this->_alloc.construct(this->_array + it_pos, val);
+			this->_size++;
+			return iterator(this->_array + it_pos);
 		}
 
-//		void insert (iterator position, size_type n, const value_type& val) {}
+		void insert (iterator position, size_type n, const value_type& val) {
+		    size_type it_end = end().getElement() - begin().getElement();
+		    size_type it_pos = position.getElement() - begin().getElement();
+		    if (this->_size + n > this->_capacity)
+		        reserve(this->_capacity + n + 15);
+		    for (size_type i = it_end + n; i != it_pos + n; --i)
+		        this->_array[i] = this->_array[i - n - 1];
+		    for (size_type i = it_pos; i != it_pos + n; ++i)
+		        this->_alloc.construct(this->_array + i, val);
+		    this->_size += n;
+		}
 
 		template <class InputIterator>
 //		void insert (iterator position, InputIterator first, InputIterator last) {}
 
 		iterator erase (iterator position) {
-
+		    difference_type it_end = end().getElement() - begin().getElement();
+		    difference_type it_pos = position.getElement() - begin().getElement();
+		    this->_alloc.destroy(this->_array + it_pos);
+		    for (difference_type i = it_pos; i != it_end; ++i)
+		        this->_array[i] = this->_array[i + 1];
+		    this->_size--;
+		    return iterator(this->_array + it_pos);
 		}
 		iterator erase (iterator first, iterator last) {
-			for (; first != last; ++first) {
+			for (;first != last;) {
 				erase(--last);
 			}
+			return last;
 		}
 
-		void swap (vector& x) {}
+		pointer getElement(void) { return this->_it; }
 
-		void clear() {}
+		void swap (vector& x) {
+		    pointer array = x._array;
+		    size_type size = x._size;
+		    size_type capacity = x._capacity;
+		    allocator_type alloc = x._alloc;
+
+		    this->_array = array;
+		    this->_size = size;
+		    this->_capacity = capacity;
+		    this->_alloc = alloc;
+
+		    x._array = this->_array;
+		    x._size = this->_size;
+		    x._capacity = this->_capacity;
+		    x._alloc = this->_alloc;
+		}
+
+		void clear() {
+		    for (size_type i = 0; i != this->_size; ++i)
+		        this->_alloc.destroy(this->_array + i);
+		    this->_size = 0;
+		}
 
 		class iterator: public std::iterator<std::random_access_iterator_tag, T> {
 		public:

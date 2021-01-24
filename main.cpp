@@ -61,7 +61,7 @@ void ftVector() {
 	std::cout << "HERE: " << v.back() << std::endl;
 	v.push_back("tests!");
 	std::cout << "HERE: " << v.back() << std::endl;
-	v.insert(3, "lol");
+	v.insert(v.begin(), 4, "K");
 
 	ft::vector<std::string>::iterator itv;
 	ft::vector<std::string>::iterator itve = v.end();
