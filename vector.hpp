@@ -106,7 +106,6 @@ class vector {
 		}
 
 		//element access:
-
 		reference operator[] (size_type n) {
 		    at(n);
 		    return this->_array[n];
@@ -134,8 +133,6 @@ class vector {
 		const_reference back() const { return *(this->_array + this->_size - 1); }
 
 		//Modifiters:
-
-
 		template <class InputIterator>
 		void assign (InputIterator first, InputIterator last) {
 		    clear();
@@ -185,7 +182,7 @@ class vector {
 		    this->_size += n;
 		}
 
-		template <class InputIterator>
+//		template <class InputIterator>
 //		void insert (iterator position, InputIterator first, InputIterator last) {}
 
 		iterator erase (iterator position) {
