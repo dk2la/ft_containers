@@ -18,17 +18,11 @@ namespace ft {
 		size_type _size;
 		size_type _capacity;
 		allocator_type _alloc;
-		list*   _t_node;
-		class list {
-		public:
+		list*   _end;
+		typedef struct list {
 			value_type field; // поле данных
-			list *next; // указатель на следующий элемент
-			list *prev; // указатель на предыдущий элемент
-		};
-		class ring {
-		public:
-			value_type size;
-			list        *current;
+			struct list *next; // указатель на следующий элемент
+			struct list *prev; // указатель на предыдущий элемент
 		};
 	public:
 		class iterator;
@@ -37,10 +31,17 @@ namespace ft {
 		class const_reverse_iterator;
 
 		//Constructors
-		explicit list (const allocator_type& alloc = allocator_type());
+		explicit list (const allocator_type& alloc = allocator_type()): _size(0), _capacity(0), _alloc(0) _end(0) {
+			this->_end = this->_alloc.allocate(1);
+			this->_size = 1;
+			this->_capacity = 1;
+		}
 
 		explicit list (size_type n, const value_type& val = value_type(),
-		               const allocator_type& alloc = allocator_type());
+		               const allocator_type& alloc = allocator_type()) {
+			for (; n != 0; --n)
+				push_back(val);
+		}
 
 		template <class InputIterator>
 		list (InputIterator first, InputIterator last,
@@ -66,11 +67,16 @@ namespace ft {
 		const_reverse_iterator rend() const;
 
 		/* Capacity */
-		bool empty() const;
+		bool empty() const ( return (this->_size == 0));
 
-		size_type size() const;
+		size_type size() const { return this->_size; }
 
-		size_type max_size() const;
+		size_type max_size() const {
+			if (sizeof(value_type) == 1)
+				return ((size_t)(-1) / sizeof(value_type) / 2);
+			else
+				return ((size_t)(-1) / sizeof(value_type));
+		}
 
 		/* Element access */
 		reference front();
