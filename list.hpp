@@ -19,12 +19,12 @@ namespace ft {
 		size_type _capacity;
 		allocator_type _alloc;
 		list*   _end;
-		typedef struct list {
+		typedef struct _List {
 			value_type* field; // поле данных
-			struct list *next; // указатель на следующий элемент
-			struct list *prev; // указатель на предыдущий элемент
+			struct _List *next; // указатель на следующий элемент
+			struct _List *prev; // указатель на предыдущий элемент
 		};
-		typedef typename allocator_type::template rebind<list>::other allocator_rebind_type;
+		typedef typename allocator_type::template rebind<_List>::other allocator_rebind_type;
 		allocator_rebind_type _allocator_rebind;
 
 		void    _createList(void) {
@@ -35,11 +35,24 @@ namespace ft {
 			this->_size = 0;
 		}
 
-		void    _destroyList(void) {
-
+		_List*   _createNode(value_type& val) {
+			_List* tmp = this->_allocator_rebind(1);
+			tmp->content = this->_alloc.allocate(1);
+			this->_alloc.construct(tmp->content, val);
+			this->_size++;
+			return tmp;
 		}
 
-		list*   insertList(list* new_list);
+		_List*   _insertList(_List* newNode, _List* pNode, _List* nNode) {
+			this->_linkNode(pNode, newNode);
+			this->_linkNode(newNode, nNode);
+		}
+
+		void    _linkNode(_List* prevNode, _List* nextNode) {
+			prevNode->next = nextNode;
+			nextNode->prev = prevNode;
+		}
+
 	public:
 		class iterator;
 		class const_iterator;
@@ -47,11 +60,11 @@ namespace ft {
 		class const_reverse_iterator;
 
 		//Constructors
-		explicit list (const allocator_type& alloc = allocator_type()): _size(0), _capacity(0), _alloc(0) _end(0) {
+		explicit _List (const allocator_type& alloc = allocator_type()): _size(0), _capacity(0), _alloc(0) _end(0) {
 			this->_createList();
 		}
 
-		explicit list (size_type n, const value_type& val = value_type(),
+		explicit _List (size_type n, const value_type& val = value_type(),
 		               const allocator_type& alloc = allocator_type()) {
 			for (; n != 0; --n)
 				push_back(val);
@@ -78,11 +91,11 @@ namespace ft {
 		iterator end() { return iterator(this->_end); }
 		const_iterator end() const { return const_iterator(this->_end); }
 
-		reverse_iterator rbegin();
-		const_reverse_iterator rbegin() const;
+		reverse_iterator rbegin() { return reverse_iterator(this->_end); }
+		const_reverse_iterator rbegin() const { return const_reverse_iterator(this->_end); }
 
-		reverse_iterator rend();
-		const_reverse_iterator rend() const;
+		reverse_iterator rend() { return reverse_iterator(this->_end->next); }
+		const_reverse_iterator rend() const { return const_reverse_iterator(this->_end->next); }
 
 		/* Capacity */
 		bool empty() const ( return (this->_size == 0));
@@ -97,44 +110,108 @@ namespace ft {
 		}
 
 		/* Element access */
-		reference front() { return *(this->_end->next); }
-		const_reference front() const { return *(this->_end->next); }
+		reference front() { return *(this->_end->next->content); }
+		const_reference front() const { return *(this->_end->next->content); }
 
-		reference back() { return *(this->_end); }
-		const_reference back() const { return *(this->_end); }
+		reference back() { return *(this->_end->content); }
+		const_reference back() const { return *(this->_end->content); }
 
 		/* Modifiers */
 		template <class InputIterator>
-		void assign (InputIterator first, InputIterator last);
-
-		void assign (size_type n, const value_type& val);
-
-		void push_front (const value_type& val);
-
-		void pop_front();
-
-		void push_back (const value_type& val) {
+		void assign (InputIterator first, InputIterator last) {
+			if (!this->empty)
+				this->clear();
+			for (;first != last; ++first)
+				this->push_back(*first);
 		}
 
-		void pop_back() {
+		void assign (size_type n, const value_type& val) {
+			if (!this->empty)
+				this->clear();
+			for (difference_type i = 0; i < n; ++i)
+				this->push_back(val);
+		}
+
+		void push_front (const value_type& val) {
+			_List* newNode = this->_createList(val);
+			this->_insertList(newNode, this->_end, this->_end->next);
+		}
+
+		void pop_front() {
+			_List* tmp = this->_end->next;
+			this->_insertList(tmp->prev, tmp->next);
+			this->_alloc.destroy(tmp->content);
+			this->_alloc.deallocate(tmp->content, 1);
+			this->_allocator_rebind.deallocate(tmp, 1);
 			this->_size--;
 		}
 
-		iterator insert (iterator position, const value_type& val);
+		void push_back (const value_type& val) {
+			_List* newNode = this->_createList(val);
+			this->_insertList(newNode, this->_end->prev, this->_end);
+		}
 
-		void insert (iterator position, size_type n, const value_type& val);
+		void pop_back() {
+			_List* tmp = this->_end->prev;
+			this->_alloc.destroy(tmp->content);
+			this->_alloc.deallocate(tmp->content, 1);
+			this->_allocator_rebind.deallocate(tmp, 1);
+			this->_size--;
+		}
+
+		iterator insert (iterator position, const value_type& val) {
+			_List* tmp = this->_createNode(val);
+			_List* pos_list = position.getElement();
+			this->_linkNode(node, list->prev, list);
+			return iterator(tmp);
+		}
+
+		void insert (iterator position, size_type n, const value_type& val) {
+			for (; n != 0; n--)
+				insert(position, val);
+		}
 
 		template <class InputIterator>
-		void insert (iterator position, InputIterator first, InputIterator last);
+		void insert (iterator position, InputIterator first, InputIterator last) {
+			for (; first != last; ++first)
+				insert(position, *first);
+		}
 
-		iterator erase (iterator position);
-		iterator erase (iterator first, iterator last);
+		iterator erase (iterator position) {
+			_List* tmp = position.getElement();
+			_List* save_node = tmp->next;
+			this->_linkNode(tmp->prev, tmp->next);
+			this->_alloc.destroy(tmp->content);
+			this->_alloc.deallocate(tmp->content, 1);
+			this->_allocator_rebind.deallocate(tmp, 1);
+			this->_size--;
+			return iterator(save_node);
+		}
+		iterator erase (iterator first, iterator last) {
+			for (;first != last;)
+				erase(++first);
+			return last;
+		}
 
-		void swap (list& x);
+		void swap (list& x) {
 
-		void resize (size_type n, value_type val = value_type());
+		}
 
-		void clear();
+		void resize (size_type n, value_type val = value_type()) {
+			if (this->_size < n) {
+				for (;n < this->_size;)
+					this->erase(iterator(this->_end->prev));
+			}
+			else if (this->_size > n) {
+				for (;this->_size < n;)
+					this->push_back(val);
+			}
+		}
+
+		void clear() {
+			for (; this->_size != 0; --_size)
+				pop_back();
+		}
 
 		/* Operations */
 		void splice (iterator position, list& x);
@@ -164,6 +241,8 @@ namespace ft {
 		void sort (Compare comp);
 
 		void reverse();
+
+		_List*  3
 
 		class iterator: public std::iterator<std::random_access_iterator_tag, T> {
 		public:

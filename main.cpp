@@ -1,76 +1,76 @@
 #include <iostream>
-//#include "list.hpp"
-#include "vector.hpp"
+#include "list.hpp"
+//#include "vector.hpp"
 //#include "map.hpp"
 //#include "stack.hpp"
 //#include "queue.hpp"
 //#include <stack>
 
 ///*	LIST COMPILES	*/
-//
-//void ftList() {
-//	ft::list<std::string> f;
-//
-//	f.push_back("LIST ");
-//	f.push_back("compiles ");
-//	f.push_back("successfully! ");
-//	f.push_back("Go ");
-//	f.push_back("check ");
-//	f.push_back("unit ");
-//	f.push_back("tests!");
-//
-//	ft::list<std::string>::iterator itf;
-//	ft::list<std::string>::iterator itfe = f.end();
-//	for (itf = f.begin(); itf != itfe; ++itf) {
-//		std::cout << *itf;
-//	}
-//	std::cout << std::endl << std::endl;
-//}
-//
-/*	VECTOR COMPILES	*/
 
-void ftVector() {
-	ft::vector<std::string> v;
+void ftList() {
+	ft::list<std::string> f;
 
-//	std::cout << "HERE: " << std::endl;
-//	v.push_back("VECTOR ");
-//	std::cout << "HERE: " << std::endl;
-//	v.push_back("compiles ");
-//	std::cout << "HERE: "  << std::endl;
-//	v.push_back("successfully! ");
-//	std::cout << "HERE: "  << std::endl;
-//	v.push_back("Go ");
-//	std::cout << "HERE: "  << std::endl;
-//	v.push_back("check ");
-//	std::cout << "HERE: "  << std::endl;
-//	v.push_back("unit ");
-//	std::cout << "HERE: "  << std::endl;
-//	v.push_back("tests!");
-//	std::cout << "HERE: "  << std::endl;
-	v.push_back("VECTOR ");
-	std::cout << v.size() << std::endl;
-	v.push_back("compiles ");
-	std::cout << "HERE: " << v.back() << std::endl;
-	v.push_back("successfully! ");
-	std::cout << "HERE: " << v.back() << std::endl;
-	v.push_back("Go ");
-	std::cout << "HERE: " << v.back() << std::endl;
-	v.push_back("check ");
-	std::cout << "HERE: " << v.back() << std::endl;
-	v.push_back("unit ");
-	std::cout << "HERE: " << v.back() << std::endl;
-	v.push_back("tests!");
-	std::cout << "HERE: " << v.back() << std::endl;
-	v.insert(v.begin(), 4, "K");
+	f.push_back("LIST ");
+	f.push_back("compiles ");
+	f.push_back("successfully! ");
+	f.push_back("Go ");
+	f.push_back("check ");
+	f.push_back("unit ");
+	f.push_back("tests!");
 
-	ft::vector<std::string>::iterator itv;
-	ft::vector<std::string>::iterator itve = v.end();
-	for (itv = v.begin(); itv != itve; ++itv)
-	{
-		std::cout << *itv;
+	ft::list<std::string>::iterator itf;
+	ft::list<std::string>::iterator itfe = f.end();
+	for (itf = f.begin(); itf != itfe; ++itf) {
+		std::cout << *itf;
 	}
 	std::cout << std::endl << std::endl;
 }
+
+/*	VECTOR COMPILES	*/
+
+//void ftVector() {
+//	ft::vector<std::string> v;
+//
+////	std::cout << "HERE: " << std::endl;
+////	v.push_back("VECTOR ");
+////	std::cout << "HERE: " << std::endl;
+////	v.push_back("compiles ");
+////	std::cout << "HERE: "  << std::endl;
+////	v.push_back("successfully! ");
+////	std::cout << "HERE: "  << std::endl;
+////	v.push_back("Go ");
+////	std::cout << "HERE: "  << std::endl;
+////	v.push_back("check ");
+////	std::cout << "HERE: "  << std::endl;
+////	v.push_back("unit ");
+////	std::cout << "HERE: "  << std::endl;
+////	v.push_back("tests!");
+////	std::cout << "HERE: "  << std::endl;
+//	v.push_back("VECTOR ");
+//	std::cout << v.size() << std::endl;
+//	v.push_back("compiles ");
+//	std::cout << "HERE: " << v.back() << std::endl;
+//	v.push_back("successfully! ");
+//	std::cout << "HERE: " << v.back() << std::endl;
+//	v.push_back("Go ");
+//	std::cout << "HERE: " << v.back() << std::endl;
+//	v.push_back("check ");
+//	std::cout << "HERE: " << v.back() << std::endl;
+//	v.push_back("unit ");
+//	std::cout << "HERE: " << v.back() << std::endl;
+//	v.push_back("tests!");
+//	std::cout << "HERE: " << v.back() << std::endl;
+//	v.insert(v.begin(), 4, "K");
+//
+//	ft::vector<std::string>::iterator itv;
+//	ft::vector<std::string>::iterator itve = v.end();
+//	for (itv = v.begin(); itv != itve; ++itv)
+//	{
+//		std::cout << *itv;
+//	}
+//	std::cout << std::endl << std::endl;
+//}
 
 ///*	MAP COMPILES	*/
 //
