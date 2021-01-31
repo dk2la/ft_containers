@@ -4,9 +4,9 @@
 #include <iterator>
 
 namespace ft {
-	template < class T, class Alloc = std::allocator<T> >
-class vector {
-		typedef T   value_type;
+	template < class T, class Alloc = allocator<T> >
+	class list {
+		typedef T value_type;
 		typedef Alloc allocator_type;
 		typedef typename allocator_type::reference reference;
 		typedef typename allocator_type::const_reference const_reference;
@@ -14,60 +14,92 @@ class vector {
 		typedef typename allocator_type::const_pointer const_pointer;
 		typedef size_t size_type;
 		typedef ptrdiff_t difference_type;
-	public:
-		class   iterator;
-		class   const_iterator;
-		class   reverse_iterator;
-		class   const_reverse_iterator;
-		//constructor:
-		explicit vector (const allocator_type& alloc = allocator_type()): _size(0), _capacity(0), _array(nullptr), _alloc(alloc) {}
+	private:
+		size_type _size;
+		size_type _capacity;
+		allocator_type _alloc;
+		list*   _end;
+		typedef struct _List {
+			value_type* field; // поле данных
+			struct _List *next; // указатель на следующий элемент
+			struct _List *prev; // указатель на предыдущий элемент
+		};
+		typedef typename allocator_type::template rebind<_List>::other allocator_rebind_type;
+		allocator_rebind_type _allocator_rebind;
 
-		explicit vector (size_type n, const value_type& val = value_type(),
-		                 const allocator_type& alloc = allocator_type()): _size(n), _capacity(this->_size), _array(nullptr), _alloc(alloc) {
-			this->_array = this->_alloc.allocate(this->_capacity);
-			for (size_type i = 0; i < this->_size; ++i)
-				this->_alloc.contruct(this->_array + i, val);
+		void    _createList(void) {
+			this->_end = this->_allocator_rebind(1);
+			this->_end->content = this->alloc.allocate(1);
+			this->_end->prev = this->_end;
+			this->_end->next = this->_end;
+			this->_size = 0;
+		}
+
+		_List*   _createNode(value_type& val) {
+			_List* tmp = this->_allocator_rebind(1);
+			tmp->content = this->_alloc.allocate(1);
+			this->_alloc.construct(tmp->content, val);
+			this->_size++;
+			return tmp;
+		}
+
+		_List*   _insertList(_List* newNode, _List* pNode, _List* nNode) {
+			this->_linkNode(pNode, newNode);
+			this->_linkNode(newNode, nNode);
+		}
+
+		void    _linkNode(_List* prevNode, _List* nextNode) {
+			prevNode->next = nextNode;
+			nextNode->prev = prevNode;
+		}
+
+	public:
+		class iterator;
+		class const_iterator;
+		class reverse_iterator;
+		class const_reverse_iterator;
+
+		//Constructors
+		explicit _List (const allocator_type& alloc = allocator_type()): _size(0), _capacity(0), _alloc(0) _end(0) {
+			this->_createList();
+		}
+
+		explicit _List (size_type n, const value_type& val = value_type(),
+		               const allocator_type& alloc = allocator_type()) {
+			for (; n != 0; --n)
+				push_back(val);
 		}
 
 		template <class InputIterator>
-		vector (InputIterator first, InputIterator last,
-		        const allocator_type& alloc = allocator_type()) {}
+		list (InputIterator first, InputIterator last,
+		      const allocator_type& alloc = allocator_type());
 
-//		vector (const vector& x): _size(x._size), _capacity(x._capacity), _array(x._array), _alloc(x._alloc) {
-//			this->_array = this->_alloc.allocate(this->_capacity);
-//			for (size_type i = 0; i < this->_size; ++i)
-//				this->_alloc.contruct(this->_array + i, val);
-//		}
+		list (const list& x) {}
 
-		//destructor:
-		~vector() {
-		    clear();
-		    if (this->_capacity)
-		        this->_alloc.deallocate(this->_array, this->_capacity);
-		    this->_capacity = 0;
+		~list() {
+			this->_destroyList();
+			this->_size = 0;
+			this->_capacity = 0;
 		}
 
-		//operator=:
-		vector& operator= (const vector& x) {clear
+		list& operator= (const list& x);
 
-            insert(begin(), x.begin(), x.end());
-            return *this;
-		}
+		/* Iterators */
+		iterator begin() { return iterator(this->_end->next); }
+		const_iterator begin() const { return const_iterator(this->_end->next); }
 
-		//Member function:
-		iterator begin() { return iterator(this->_array); }
-		const_iterator begin() const { return const_iterator(this->_array); }
+		iterator end() { return iterator(this->_end); }
+		const_iterator end() const { return const_iterator(this->_end); }
 
-		iterator end() { return iterator(this->_array + this->_size); }
-		const_iterator end() const { return const_iterator(this->_array + this->_size); }
+		reverse_iterator rbegin() { return reverse_iterator(this->_end); }
+		const_reverse_iterator rbegin() const { return const_reverse_iterator(this->_end); }
 
-		reverse_iterator rbegin() { return reverse_iterator(this->_array - this->_size - 1); }
-		const_reverse_iterator rbegin() const { return const_reverse_iterator(this->_array - this->_size - 1); }
+		reverse_iterator rend() { return reverse_iterator(this->_end->next); }
+		const_reverse_iterator rend() const { return const_reverse_iterator(this->_end->next); }
 
-		reverse_iterator rend() { return reverse_iterator(this->_array - 1); }
-		const_reverse_iterator rend() const { return const_reverse_iterator(this->_array - 1); }
+		/* Capacity */
+		bool empty() const ( return (this->_size == 0));
 
-		//Capacity:
 		size_type size() const { return this->_size; }
 
 		size_type max_size() const {
@@ -77,155 +109,140 @@ class vector {
 				return ((size_t)(-1) / sizeof(value_type));
 		}
 
-		void resize (size_type n, value_type val = value_type()) {
-			if (n < this->_size)
-				for (;this->_size >= n;)
-					pop_back();
-			else if (n > this->_size) {
-				std::cout << "HERE" << std::endl;
-				for (;this->_size <= n;)
-					push_back(val);
-			}
-		}
+		/* Element access */
+		reference front() { return *(this->_end->next->content); }
+		const_reference front() const { return *(this->_end->next->content); }
 
-		size_type capacity() const { return this->_capacity; }
+		reference back() { return *(this->_end->content); }
+		const_reference back() const { return *(this->_end->content); }
 
-		bool empty() const { return (this->_size == 0); }
-
-		void reserve (size_type n) {
-			if (n > this->_capacity) {
-				pointer tmp = this->_alloc.allocate(n);
-				for (size_type i = 0; i < this->_size; ++i)
-					this->_alloc.construct(&tmp[i], this->_array[i]);
-				this->_alloc.deallocate(this->_array, this->_capacity);
-				this->_capacity = n;
-				this->_array = this->_alloc.allocate(this->_capacity);
-				for (size_type i = 0; i < this->_size; ++i)
-					this->_alloc.construct(&_array[i], tmp[i]);
-				this->_alloc.deallocate(tmp, this->_capacity);
-			}
-		}
-
-		//element access:
-		reference operator[] (size_type n) {
-		    at(n);
-		    return this->_array[n];
-		}
-		const_reference operator[] (size_type n) const {
-		    at(n);
-		    return this->_array[n];
-		}
-
-		reference at (size_type n) {
-		    if (this->_size < n)
-		        throw std::out_of_range("out of range");
-		    return this->_array[n];
-		}
-		const_reference at (size_type n) const {
-		    if (this->_size < n)
-		        throw std::out_of_range("out of range");
-		    return this->_array[n];
-		}
-
-		reference front() { return *_array; }
-		const_reference front() const { return *_array; }
-
-		reference back() { return *(this->_array + this->_size - 1); }
-		const_reference back() const { return *(this->_array + this->_size - 1); }
-
-		//Modifiters:
+		/* Modifiers */
 		template <class InputIterator>
 		void assign (InputIterator first, InputIterator last) {
-		    clear();
-		    for (; first != last; ++first)
-		        push_back(*first);
+			if (!this->empty)
+				this->clear();
+			for (;first != last; ++first)
+				this->push_back(*first);
 		}
 
 		void assign (size_type n, const value_type& val) {
-		    clear();
-		    for (; n != 0; --n)
-		        push_back(val);
+			if (!this->empty)
+				this->clear();
+			for (difference_type i = 0; i < n; ++i)
+				this->push_back(val);
+		}
+
+		void push_front (const value_type& val) {
+			_List* newNode = this->_createList(val);
+			this->_insertList(newNode, this->_end, this->_end->next);
+		}
+
+		void pop_front() {
+			_List* tmp = this->_end->next;
+			this->_insertList(tmp->prev, tmp->next);
+			this->_alloc.destroy(tmp->content);
+			this->_alloc.deallocate(tmp->content, 1);
+			this->_allocator_rebind.deallocate(tmp, 1);
+			this->_size--;
 		}
 
 		void push_back (const value_type& val) {
-			if (this->_size + 1 >= this->_capacity) {
-				reserve(this->_capacity + 15);
-			}
-			this->_array[_size] = val;
-			this->_size++;
+			_List* newNode = this->_createList(val);
+			this->_insertList(newNode, this->_end->prev, this->_end);
 		}
 
 		void pop_back() {
+			_List* tmp = this->_end->prev;
+			this->_alloc.destroy(tmp->content);
+			this->_alloc.deallocate(tmp->content, 1);
+			this->_allocator_rebind.deallocate(tmp, 1);
 			this->_size--;
 		}
 
 		iterator insert (iterator position, const value_type& val) {
-			difference_type it_end = end().getElement() - begin().getElement();
-			difference_type it_pos = position.getElement() - begin().getElement();
-			if (this->_size + 1 > this->_capacity)
-			    reserve(this->_capacity + 15);
-			for (difference_type i = it_end; i != it_pos; --i)
-			    this->_array[i] = this->_array[i - 1];
-			this->_alloc.construct(this->_array + it_pos, val);
-			this->_size++;
-			return iterator(this->_array + it_pos);
+			_List* tmp = this->_createNode(val);
+			_List* pos_list = position.getElement();
+			this->_linkNode(node, list->prev, list);
+			return iterator(tmp);
 		}
 
 		void insert (iterator position, size_type n, const value_type& val) {
-		    size_type it_end = end().getElement() - begin().getElement();
-		    size_type it_pos = position.getElement() - begin().getElement();
-		    if (this->_size + n > this->_capacity)
-		        reserve(this->_capacity + n + 15);
-		    for (size_type i = it_end + n; i != it_pos + n; --i)
-		        this->_array[i] = this->_array[i - n - 1];
-		    for (size_type i = it_pos; i != it_pos + n; ++i)
-		        this->_alloc.construct(this->_array + i, val);
-		    this->_size += n;
+			for (; n != 0; n--)
+				insert(position, val);
 		}
 
-//		template <class InputIterator>
-//		void insert (iterator position, InputIterator first, InputIterator last) {}
+		template <class InputIterator>
+		void insert (iterator position, InputIterator first, InputIterator last) {
+			for (; first != last; ++first)
+				insert(position, *first);
+		}
 
 		iterator erase (iterator position) {
-		    difference_type it_end = end().getElement() - begin().getElement();
-		    difference_type it_pos = position.getElement() - begin().getElement();
-		    this->_alloc.destroy(this->_array + it_pos);
-		    for (difference_type i = it_pos; i != it_end; ++i)
-		        this->_array[i] = this->_array[i + 1];
-		    this->_size--;
-		    return iterator(this->_array + it_pos);
+			_List* tmp = position.getElement();
+			_List* save_node = tmp->next;
+			this->_linkNode(tmp->prev, tmp->next);
+			this->_alloc.destroy(tmp->content);
+			this->_alloc.deallocate(tmp->content, 1);
+			this->_allocator_rebind.deallocate(tmp, 1);
+			this->_size--;
+			return iterator(save_node);
 		}
 		iterator erase (iterator first, iterator last) {
-			for (;first != last;) {
-				erase(--last);
-			}
+			for (;first != last;)
+				erase(++first);
 			return last;
 		}
 
-		pointer getElement(void) { return this->_it; }
+		void swap (list& x) {
 
-		void swap (vector& x) {
-		    pointer array = x._array;
-		    size_type size = x._size;
-		    size_type capacity = x._capacity;
-		    allocator_type alloc = x._alloc;
+		}
 
-		    this->_array = array;
-		    this->_size = size;
-		    this->_capacity = capacity;
-		    this->_alloc = alloc;
-
-		    x._array = this->_array;
-		    x._size = this->_size;
-		    x._capacity = this->_capacity;
-		    x._alloc = this->_alloc;
+		void resize (size_type n, value_type val = value_type()) {
+			if (this->_size < n) {
+				for (;n < this->_size;)
+					this->erase(iterator(this->_end->prev));
+			}
+			else if (this->_size > n) {
+				for (;this->_size < n;)
+					this->push_back(val);
+			}
 		}
 
 		void clear() {
-		    for (size_type i = 0; i != this->_size; ++i)
-		        this->_alloc.destroy(this->_array + i);
-		    this->_size = 0;
+			for (; this->_size != 0; --_size)
+				pop_back();
 		}
+
+		/* Operations */
+		void splice (iterator position, list& x);
+
+		void splice (iterator position, list& x, iterator i);
+
+		void splice (iterator position, list& x, iterator first, iterator last);
+
+		void remove (const value_type& val);
+
+		template <class Predicate>
+		void remove_if (Predicate pred);
+
+		void unique();
+
+		template <class BinaryPredicate>
+		void unique (BinaryPredicate binary_pred);
+
+		void merge (list& x);
+
+		template <class Compare>
+		void merge (list& x, Compare comp);
+
+		void sort();
+
+		template <class Compare>
+		void sort (Compare comp);
+
+		void reverse();
+
+		_List*  3
 
 		class iterator: public std::iterator<std::random_access_iterator_tag, T> {
 		public:
@@ -415,11 +432,6 @@ class vector {
 		private:
 			pointer _it;
 		};
-	private:
-		size_type       _size;
-		size_type       _capacity;
-		pointer         _array;
-		allocator_type  _alloc;
 	};
 
 }
