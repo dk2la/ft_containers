@@ -48,7 +48,8 @@ class vector {
 		}
 
 		//operator=:
-		vector& operator= (const vector& x) {
+		vector& operator= (const vector& x) {clear
+
             insert(begin(), x.begin(), x.end());
             return *this;
 		}
