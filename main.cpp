@@ -11,18 +11,19 @@
 void ftList() {
 	ft::list<std::string> f;
 
-	f.push_back("LIST ");
-	f.push_back("compiles ");
-	f.push_back("successfully! ");
-	f.push_back("Go ");
-	f.push_back("check ");
-	f.push_back("unit ");
-	f.push_back("tests!");
+	f.push_back("5");
+	f.push_back("4");
+	f.push_back("3");
+	f.push_back("2");
+	f.push_back("1");
+	f.push_back("1");
+	f.push_back("1");
+    f.sort();
 
 	ft::list<std::string>::iterator itf;
 	ft::list<std::string>::iterator itfe = f.end();
 	for (itf = f.begin(); itf != itfe; ++itf) {
-		std::cout << *itf;
+		std::cout << *itf << std::endl;
 	}
 	std::cout << std::endl << std::endl;
 }
@@ -165,8 +166,8 @@ void ftList() {
 
 int main()
 {
-//	ftList();
-	ftVector();
+	ftList();
+//	ftVector();
 //	ftMap();
 //	ftStack();
 //	ftQueue();
