@@ -14,6 +14,9 @@ class vector {
 		typedef typename allocator_type::const_pointer const_pointer;
 		typedef size_t size_type;
 		typedef ptrdiff_t difference_type;
+
+		template<bool Cond, class T = void> struct enable_if {};
+		template<class T> struct enable_if<true, T> { typedef T type; };
 	public:
 		class   iterator;
 		class   const_iterator;
@@ -31,13 +34,18 @@ class vector {
 
 		template <class InputIterator>
 		vector (InputIterator first, InputIterator last,
-		        const allocator_type& alloc = allocator_type()) {}
+		        const allocator_type& alloc = allocator_type(),
+				typename ft::enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+			this->array = this->_alloc.allocate(this->_capacity);
+			for (; first != last; ++first)
+				push_back(*first);
+		}
 
-//		vector (const vector& x): _size(x._size), _capacity(x._capacity), _array(x._array), _alloc(x._alloc) {
-//			this->_array = this->_alloc.allocate(this->_capacity);
-//			for (size_type i = 0; i < this->_size; ++i)
-//				this->_alloc.contruct(this->_array + i, val);
-//		}
+		vector (const vector& x): _size(x._size), _capacity(x._capacity), _array(x._array), _alloc(x._alloc) {
+			this->_array = this->_alloc.allocate(this->_capacity);
+			for (size_type i = 0; i < this->_size; ++i)
+				this->_alloc.contruct(this->_array + i, val);
+		}
 
 		//destructor:
 		~vector() {
@@ -135,7 +143,8 @@ class vector {
 
 		//Modifiters:
 		template <class InputIterator>
-		void assign (InputIterator first, InputIterator last) {
+		void assign (InputIterator first, InputIterator last,
+					 typename ft::enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
 		    clear();
 		    for (; first != last; ++first)
 		        push_back(*first);
@@ -183,8 +192,20 @@ class vector {
 		    this->_size += n;
 		}
 
-//		template <class InputIterator>
-//		void insert (iterator position, InputIterator first, InputIterator last) {}
+		template <class InputIterator>
+		void insert (iterator position, InputIterator first, InputIterator last,
+					 typename ft::enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+			size_type n = static_cast<size_type>(last.operator->() - first.operator->());
+			size_type it_end = end().getElement() - begin().getElement();
+			size_type it_pos = position.getElement() - begin().getElement();
+			if (this->_size + n > this->_capacity)
+				reserve(this->_capacity + n + 15);
+			for (size_type i = it_end + n; i != it_pos + n; --i)
+				this->_array[i] = this->_array[i - n - 1];
+			for (size_type i = it_pos; i != it_pos + n; ++i)
+				this->_alloc.construct(this->_array + i, val);
+			this->_size += n;
+		}
 
 		iterator erase (iterator position) {
 		    difference_type it_end = end().getElement() - begin().getElement();
