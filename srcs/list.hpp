@@ -15,8 +15,11 @@ namespace ft {
 		typedef size_t size_type;
 		typedef ptrdiff_t difference_type;
 
-		template<bool Cond, class T = void> struct enable_if {};
-		template<class T> struct enable_if<true, T> { typedef T type; };
+		template<bool B, class C = void>
+		struct enable_if {};
+
+		template <class C>
+		struct enable_if <true, C> { typedef T type; };
 	private:
 	    size_type _size;
 		allocator_type _alloc;
@@ -124,7 +127,7 @@ namespace ft {
 
 		template <class InputIterator>
 		list (InputIterator first, InputIterator last, const allocator_type& alloc = allocator_type(),
-			  typename ft::enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+			  typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
 			this->_createList();
 			for (; first != last; ++first)
 				push_back(*first);
@@ -136,13 +139,13 @@ namespace ft {
 		}
 
 		~list() {
-		    clear();
-			this->_size = 0;
-            this->_alloc.deallocate(this->_end->content, 1);
-            this->_allocator_rebind.deallocate(this->_end, 1);
+//		    clear();
+//			this->_size = 0;
+//            this->_alloc.deallocate(this->_end->content, 1);
+//            this->_allocator_rebind.deallocate(this->_end, 1);
 		}
 
-		list& operator= (const list& x) {
+		list& operator=(const list& x) {
 		    this->_size = x._size;
 		    this->_alloc = x._alloc;
 		    this->_end = x._end;
@@ -185,28 +188,28 @@ namespace ft {
 		/* Modifiers */
 		template <class InputIterator>
 		void assign (InputIterator first, InputIterator last,
-					 typename ft::enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
-			if (!this->empty)
+					 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+			if (!this->empty())
 				this->clear();
 			for (;first != last; ++first)
 				this->push_back(*first);
 		}
 
 		void assign (size_type n, const value_type& val) {
-			if (!this->empty)
+			if (!this->empty())
 				this->clear();
 			for (size_type i = 0; i < n; ++i)
 				this->push_back(val);
 		}
 
-		void push_front (const value_type& val) {
-			_List* current = this->_createList(val);
+		void push_front(const value_type& val) {
+			_List* current = this->_createNode(val);
 			this->_insertList(current, this->_end, this->_end->next);
 		}
 
 		void pop_front() {
 			_List* tmp = this->_end->next;
-			this->_insertList(tmp->prev, tmp->next);
+			this->_linkNode(tmp->prev, tmp->next);
 			this->_alloc.destroy(tmp->content);
 			this->_alloc.deallocate(tmp->content, 1);
 			this->_allocator_rebind.deallocate(tmp, 1);
@@ -230,7 +233,7 @@ namespace ft {
 		iterator insert (iterator position, const value_type& val) {
 			_List* current = this->_createNode(val);
 			_List* it_pos = position.getElement();
-			this->_linkNode(current, it_pos->prev, it_pos);
+			this->_insertList(current, it_pos->prev, it_pos);
 			return iterator(current);
 		}
 
@@ -241,7 +244,7 @@ namespace ft {
 
 		template <class InputIterator>
 		void insert (iterator position, InputIterator first, InputIterator last,
-					 typename ft::enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+					 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
 			for (; first != last; ++first)
 				insert(position, *first);
 		}
@@ -257,8 +260,8 @@ namespace ft {
 			return iterator(save_node);
 		}
 		iterator erase (iterator first, iterator last) {
-			for (;first != last;)
-				erase(++first);
+			while (first != last)
+				erase(first++);
 			return last;
 		}
 
@@ -272,14 +275,10 @@ namespace ft {
 		}
 
 		void resize (size_type n, value_type val = value_type()) {
-			if (this->_size < n) {
-				for (;n < this->_size;)
-					this->erase(iterator(this->_end->prev));
-			}
-			else if (this->_size > n) {
-				for (;this->_size < n;)
-					this->push_back(val);
-			}
+			while (n < this->_size)
+				this->erase(iterator(this->_end->prev));
+			while (this->_size < n)
+				this->push_back(val);
 		}
 
 		void clear() {
@@ -289,13 +288,6 @@ namespace ft {
 
 		/* Operations */
 		void splice (iterator position, list& x) {
-//			_List* insert_position = position.getElement();
-//			_List* begin_x_node = x.begin().getElement();
-//			_List* end_x_node = x.end().getElement();
-//			_linkNode(insert_position->prev, begin_x_node);
-//			_linkNode(end_x_node->prev, insert_position);
-//			_size += x._size;
-//			x._size -= x._size;
 			splice(position, x, x.begin(), x.end());
 		}
 
@@ -389,7 +381,7 @@ namespace ft {
 		}
 
 		void sort() {
-			sort(comp);
+			sort(bcmp);
 		}
 
 		template <class Compare>
@@ -421,12 +413,12 @@ namespace ft {
 			iterator& operator--() { this->_it = this->_it->prev; return *this; }
 
 			iterator operator++(int) {
-				iterator tmp(*this);
+				iterator tmp(_it);
 				this->operator++();
 				return tmp;
 			}
 			iterator operator--(int) {
-				iterator tmp(*this);
+				iterator tmp(_it);
 				this->operator--();
 				return tmp;
 			}
@@ -438,7 +430,7 @@ namespace ft {
 			T*   operator->() {return this->_it->content; }
 			_List* getElement() const { return this->_it; }
 		private:
-			_List*  _it;
+ 			_List*  _it;
 		};
 
 		class const_iterator: public std::iterator<std::random_access_iterator_tag, T> {
@@ -447,7 +439,7 @@ namespace ft {
             const_iterator(const const_iterator& it) { *this = it; }
             const_iterator(const iterator& it) { *this = it; }
             const_iterator&   operator=(const iterator& it) {
-                this->_it = it._it;
+                this->_it = it.getElement();
                 return *this;
             }
             const_iterator&   operator=(const const_iterator& it) {
@@ -460,18 +452,20 @@ namespace ft {
             const_iterator& operator--() { this->_it = this->_it->prev; return *this; }
 
             const_iterator operator++(int) {
-                iterator tmp(*this);
+                iterator tmp(_it);
                 this->operator++();
                 return tmp;
             }
             const_iterator operator--(int) {
-                iterator tmp(*this);
+                iterator tmp(_it);
                 this->operator--();
                 return tmp;
             }
 
-            bool        operator==(const const_iterator& it) { return (this->_it->content == it.getElement()->content); }
-            bool        operator!=(const const_iterator& it) { return (this->_it->content != it.getElement()->content); }
+            bool        operator==(const const_iterator& it) const { return (this->_it->content == it.getElement()->content); }
+            bool        operator!=(const const_iterator& it) const { return (this->_it->content != it.getElement()->content); }
+			bool        operator==(const iterator& it) { return (this->_it->content == it.getElement()->content); }
+			bool        operator!=(const iterator& it) { return (this->_it->content != it.getElement()->content); }
 
             T&   operator*() { return *(this->_it->content); }
             T*   operator->() {return this->_it->content; }
@@ -494,18 +488,18 @@ namespace ft {
             reverse_iterator& operator--() { this->_it = this->_it->prev; return *this; }
 
             reverse_iterator operator++(int) {
-                reverse_iterator tmp(*this);
+                reverse_iterator tmp(_it);
                 this->operator++();
                 return tmp;
             }
             reverse_iterator operator--(int) {
-                reverse_iterator tmp(*this);
+                reverse_iterator tmp(_it);
                 this->operator--();
                 return tmp;
             }
 
-            bool        operator==(const reverse_iterator& it) { return (this->_it->content == it.getElement()->content); }
-            bool        operator!=(const reverse_iterator& it) { return (this->_it->content != it.getElement()->content); }
+            bool        operator==(const reverse_iterator& it) const { return (_it->content == it.getElement()->content); }
+            bool        operator!=(const reverse_iterator& it) const { return (_it->content != it.getElement()->content); }
 
             T&   operator*() { return *(this->_it->content); }
             T*   operator->() {return this->_it->content; }
@@ -520,7 +514,7 @@ namespace ft {
             const_reverse_iterator(const const_reverse_iterator& it) { *this = it; }
             const_reverse_iterator(const reverse_iterator& it) { *this = it; }
             const_reverse_iterator&   operator=(const reverse_iterator& it) {
-                this->_it = it._it;
+                this->_it = it.getElement();
                 return *this;
             }
             const_reverse_iterator&   operator=(const const_reverse_iterator& it) {
@@ -533,12 +527,12 @@ namespace ft {
             const_reverse_iterator& operator--() { this->_it = this->_it->prev; return *this; }
 
             const_reverse_iterator operator++(int) {
-                const_reverse_iterator tmp(*this);
+                const_reverse_iterator tmp(_it);
                 this->operator++();
                 return tmp;
             }
             const_reverse_iterator operator--(int) {
-                const_reverse_iterator tmp(*this);
+                const_reverse_iterator tmp(_it);
                 this->operator--();
                 return tmp;
             }
@@ -553,5 +547,46 @@ namespace ft {
             _List*  _it;
 		};
 	};
+	template <class T, class Alloc> bool operator==
+			(const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) {
+		typename ft::list<T, Alloc>::const_iterator l_it = lhs.begin();
+		typename ft::list<T, Alloc>::const_iterator l_ite = lhs.end();
+		typename ft::list<T, Alloc>::const_iterator r_it = rhs.begin();
 
+		if (lhs.size() != rhs.size()) return false;
+
+		for (; l_it != l_ite; ++l_it, ++r_it) if (*l_it != *r_it) return false;
+
+		return true;
+	};
+
+	template <class T, class Alloc> bool operator!=
+			(const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) { return !(lhs == rhs); };
+
+	template <class T, class Alloc> bool operator<
+			(const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) {
+		typename ft::list<T, Alloc>::const_iterator l_it = lhs.begin();
+		typename ft::list<T, Alloc>::const_iterator l_ite = lhs.end();
+		typename ft::list<T, Alloc>::const_iterator r_it = rhs.begin();
+		typename ft::list<T, Alloc>::const_iterator r_ite = rhs.end();
+
+		for (; l_it != l_ite && r_it != r_ite; ++l_it, ++r_it)
+			if (*l_it < *r_it) return true;
+
+		if (l_it != l_ite) return false;
+
+		return (r_it != r_ite);
+
+	};
+
+	template <class T, class Alloc>
+	bool operator<=(const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) { return !(rhs < lhs); };
+
+	template <class T, class Alloc>
+	bool operator>(const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) { return (rhs < lhs); };
+
+	template <class T, class Alloc>
+	bool operator>=(const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) { return !(lhs < rhs); };
+
+	template <class T, class Alloc> void swap (ft::list<T,Alloc>& x, ft::list<T,Alloc>& y) { x.swap(y); };
 }

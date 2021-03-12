@@ -23,7 +23,12 @@ namespace ft {
 		typedef size_t								size_type;
 
 	private:
-
+		typedef struct Node {
+			size_type	key;
+			size_type	height;
+			Node*		left;
+			Node*		right;
+		}				t_node;
 	public:
 		/* Constructor */
 		/* empty */

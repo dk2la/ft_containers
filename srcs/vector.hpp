@@ -15,8 +15,10 @@ class vector {
 		typedef size_t size_type;
 		typedef ptrdiff_t difference_type;
 
-		template<bool Cond, class T = void> struct enable_if {};
-		template<class T> struct enable_if<true, T> { typedef T type; };
+		template<bool Cond, class B = void>
+		struct enable_if {};
+		template<class B>
+		struct enable_if<true, B> { typedef B type; };
 	public:
 		class   iterator;
 		class   const_iterator;
@@ -35,7 +37,7 @@ class vector {
 		template <class InputIterator>
 		vector (InputIterator first, InputIterator last,
 		        const allocator_type& alloc = allocator_type(),
-				typename ft::enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+				typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
 			this->array = this->_alloc.allocate(this->_capacity);
 			for (; first != last; ++first)
 				push_back(*first);
@@ -44,7 +46,7 @@ class vector {
 		vector (const vector& x): _size(x._size), _capacity(x._capacity), _array(x._array), _alloc(x._alloc) {
 			this->_array = this->_alloc.allocate(this->_capacity);
 			for (size_type i = 0; i < this->_size; ++i)
-				this->_alloc.contruct(this->_array + i, val);
+				this->_alloc.construct(this->_array + i, *(x._array + i));
 		}
 
 		//destructor:
@@ -56,9 +58,11 @@ class vector {
 		}
 
 		//operator=:
-		vector& operator= (const vector& x) {clear
-
-            insert(begin(), x.begin(), x.end());
+		vector& operator=(const vector& x) {
+			clear();
+			this->_size = x._size;
+			this->_capacity = x._capacity;
+			this->_alloc = x._alloc;
             return *this;
 		}
 
@@ -144,7 +148,7 @@ class vector {
 		//Modifiters:
 		template <class InputIterator>
 		void assign (InputIterator first, InputIterator last,
-					 typename ft::enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+					 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
 		    clear();
 		    for (; first != last; ++first)
 		        push_back(*first);
@@ -194,7 +198,7 @@ class vector {
 
 		template <class InputIterator>
 		void insert (iterator position, InputIterator first, InputIterator last,
-					 typename ft::enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+					 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
 			size_type n = static_cast<size_type>(last.operator->() - first.operator->());
 			size_type it_end = end().getElement() - begin().getElement();
 			size_type it_pos = position.getElement() - begin().getElement();
@@ -253,7 +257,7 @@ class vector {
 			explicit iterator(pointer it = nullptr): _it(it) {}
 			iterator(const iterator& it) { *this = it; }
 			iterator&   operator=(const iterator& it) {
-				this->_it = it._it;
+				this->_it = it.getElement();
 				return *this;
 			}
 			~iterator() {}
@@ -348,7 +352,7 @@ class vector {
 			explicit reverse_iterator(pointer it = nullptr): _it(it) {}
 			reverse_iterator(const reverse_iterator& it) { *this = it; }
 			reverse_iterator&   operator=(const reverse_iterator& it) {
-				this->_it = it._it;
+				this->_it = it.getElement();
 				return *this;
 			}
 			~reverse_iterator() {}
@@ -395,7 +399,7 @@ class vector {
 			explicit const_reverse_iterator(pointer it = nullptr): _it(it) {}
 			const_reverse_iterator(const const_reverse_iterator& it) { *this = it; }
 			const_reverse_iterator&   operator=(const reverse_iterator& it) {
-				this->_it = it._it;
+				this->_it = it.getElement();
 				return *this;
 			}
 			~const_reverse_iterator() {}
@@ -442,5 +446,47 @@ class vector {
 		pointer         _array;
 		allocator_type  _alloc;
 	};
+	template <class T, class Alloc>
+	bool ft::operator==(const ft::vector<T, Alloc> &lhs, const ft::vector<T, Alloc> &rhs) {
+		typename ft::vector<T, Alloc>::const_iterator l_it = lhs.begin();
+		typename ft::vector<T, Alloc>::const_iterator l_ite = lhs.end();
+		typename ft::vector<T, Alloc>::const_iterator r_it = rhs.begin();
+		typename ft::vector<T, Alloc>::const_iterator r_ite = rhs.end();
+
+		if (lhs.size() != rhs.size()) return false;
+
+		for (; l_it != l_ite; ++l_it, ++r_it) if (*l_it != *r_it) return false;
+
+		return true;
+	};
+
+	template <class T, class Alloc>
+	bool ft::operator!=(const ft::vector<T, Alloc> &lhs, const ft::vector<T, Alloc> &rhs) { return !(lhs == rhs); };
+
+	template <class T, class Alloc>
+	bool ft::operator<(const ft::vector<T, Alloc> &lhs, const ft::vector<T, Alloc> &rhs) {
+		typename ft::vector<T, Alloc>::const_iterator l_it = lhs.begin();
+		typename ft::vector<T, Alloc>::const_iterator l_ite = lhs.end();
+		typename ft::vector<T, Alloc>::const_iterator r_it = rhs.begin();
+		typename ft::vector<T, Alloc>::const_iterator r_ite = rhs.end();
+
+		for (; l_it != l_ite && r_it != r_ite; ++l_it, ++r_it)
+			if (*l_it < *r_it) return true;
+
+		if (l_it != l_ite) return false;
+
+		return (r_it != r_ite);
+	};
+
+	template <class T, class Alloc>
+	bool ft::operator<=(const ft::vector<T, Alloc> &lhs, const ft::vector<T, Alloc> &rhs) { return !(rhs < lhs); };
+
+	template <class T, class Alloc>
+	bool ft::operator>(const ft::vector<T,Alloc>& lhs, const ft::vector<T,Alloc>& rhs) { return (rhs < lhs); };
+
+	template <class T, class Alloc>
+	bool ft::operator>=(const ft::vector<T,Alloc>& lhs, const ft::vector<T,Alloc>& rhs) { return !(lhs < rhs); };
+
+	template <class T, class Alloc> void ft::swap (ft::vector<T,Alloc>& x, ft::vector<T,Alloc>& y) { x.swap(y); };
 
 }

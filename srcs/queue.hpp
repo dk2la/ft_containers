@@ -13,7 +13,7 @@ namespace ft {
 	public:
 
 		//constructor
-		explicit queue (const container_type& ctnr = container_type()) {}
+		explicit queue (const container_type& ctnr = container_type()): _size(0), _list(0) {}
 
 		//destructor
 		~queue() {}
