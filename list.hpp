@@ -14,8 +14,10 @@ namespace ft {
 		typedef typename allocator_type::const_pointer const_pointer;
 		typedef size_t size_type;
 		typedef ptrdiff_t difference_type;
-	private:
 
+		template<bool Cond, class T = void> struct enable_if {};
+		template<class T> struct enable_if<true, T> { typedef T type; };
+	private:
 	    size_type _size;
 		allocator_type _alloc;
 
@@ -55,6 +57,53 @@ namespace ft {
 			nextNode->prev = prevNode;
 		}
 
+		void	_mergeSort(_List** headRef) { // Принимаем ссылку на begin node
+			_List*	head = *headRef;
+			_List*	a;
+			_List*	b;
+
+			if ((head == _end) || (head->next == _end))
+				return;
+			_frontBackSplit(head, &a, &b);
+			_mergeSort(&a);
+			_mergeSort(&b);
+			*headRef = _sortedMerge(a, b);
+		}
+
+		void	_frontBackSplit(_List* head, _List** frontRef, _List** backRef) {
+			_List* fast;
+			_List* slow;
+			slow = head; // begin node
+			fast = head->next; // ++begin node
+
+			while (fast != _end) {
+				fast = fast->next;
+				if (fast != _end) {
+					slow = slow->next;
+					fast = fast->next;
+				}
+			}
+			*frontRef = head;
+			*backRef = slow->next;
+			slow->next = _end;
+		}
+
+		_List*	_sortedMerge(_List* a, _List* b) {
+			_List* result = _end;
+			if (a == _end)
+				return b;
+			else if (b == _end)
+				return a;
+			if (a->content <= b->content) {
+				result = a;
+				result->next = _sortedMerge(a->next, b);
+			}
+			else {
+				result = b;
+				result->next = _sortedMerge(a, b->next);
+			}
+			return result;
+		}
 	public:
 		class iterator;
 		class const_iterator;
@@ -74,8 +123,12 @@ namespace ft {
 		}
 
 		template <class InputIterator>
-		list (InputIterator first, InputIterator last,
-		      const allocator_type& alloc = allocator_type());
+		list (InputIterator first, InputIterator last, const allocator_type& alloc = allocator_type(),
+			  typename ft::enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+			this->_createList();
+			for (; first != last; ++first)
+				push_back(*first);
+		}
 
 		list (const list& x): _alloc(x._alloc), _end(0) {
 		    this->_createList();
@@ -130,13 +183,14 @@ namespace ft {
 		const_reference back() const { return *(this->_end->prev->content); }
 
 		/* Modifiers */
-//		template <class InputIterator>
-//		void assign (InputIterator first, InputIterator last) {
-//			if (!this->empty)
-//				this->clear();
-//			for (;first != last; ++first)
-//				this->push_back(*first);
-//		}
+		template <class InputIterator>
+		void assign (InputIterator first, InputIterator last,
+					 typename ft::enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+			if (!this->empty)
+				this->clear();
+			for (;first != last; ++first)
+				this->push_back(*first);
+		}
 
 		void assign (size_type n, const value_type& val) {
 			if (!this->empty)
@@ -185,11 +239,12 @@ namespace ft {
 				insert(position, val);
 		}
 
-//		template <class InputIterator>
-//		void insert (iterator position, InputIterator first, InputIterator last) {
-//			for (; first != last; ++first)
-//				insert(position, *first);
-//		}
+		template <class InputIterator>
+		void insert (iterator position, InputIterator first, InputIterator last,
+					 typename ft::enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+			for (; first != last; ++first)
+				insert(position, *first);
+		}
 
 		iterator erase (iterator position) {
 			_List* it_pos = position.getElement();
@@ -234,12 +289,35 @@ namespace ft {
 
 		/* Operations */
 		void splice (iterator position, list& x) {
-//		    _List* tmp =
+//			_List* insert_position = position.getElement();
+//			_List* begin_x_node = x.begin().getElement();
+//			_List* end_x_node = x.end().getElement();
+//			_linkNode(insert_position->prev, begin_x_node);
+//			_linkNode(end_x_node->prev, insert_position);
+//			_size += x._size;
+//			x._size -= x._size;
+			splice(position, x, x.begin(), x.end());
 		}
 
-		void splice (iterator position, list& x, iterator i);
+		void splice (iterator position, list& x, iterator i) {
+			_List*	curr_node = position.getElement();
+			_List*	from_pos = i.getElement();
+			_linkNode(from_pos->prev, from_pos->next);
+			_insertList(from_pos, curr_node->prev, curr_node);
+			_size += 1;
+			x._size -= 1;
 
-		void splice (iterator position, list& x, iterator first, iterator last);
+		}
+
+		void splice (iterator position, list& x, iterator first, iterator last) {
+			_List*	insert_position = position.getElement();
+			_List*	begin_x_node = first.getElement();
+			_List*	end_x_node = last.getElement();
+			_linkNode(insert_position->prev, begin_x_node);
+			_linkNode(end_x_node->prev, insert_position);
+			_size += x._size;
+			x._size -= x._size;
+		}
 
 		void remove (const value_type& val) {
 		    for (iterator it = begin(); it != end(); ++it) {
@@ -257,7 +335,7 @@ namespace ft {
 		}
 
 		void unique() {
-//		    this->sort();
+		    this->sort();
 		    iterator it = begin();
 		    iterator next = ++begin();
 		    while (next != end()) {
@@ -272,7 +350,7 @@ namespace ft {
 
 		template <class BinaryPredicate>
 		void unique (BinaryPredicate binary_pred) {
-            //		    this->sort();
+            		    this->sort();
             iterator it = begin();
             iterator next = ++begin();
             while (next != end()) {
@@ -311,22 +389,12 @@ namespace ft {
 		}
 
 		void sort() {
-            _List* current = this->_end->next;
-            _List* next_elem = current->next;
-            _List* tmp;
-            bool sort = 1;
-            while (sort) {
-                sort = 0;
-                next_elem = current->next;
-                while (next_elem != this->_end) {
-                    if ()
-                }
-                current = current->next;
-            }
+			sort(comp);
 		}
 
 		template <class Compare>
 		void sort (Compare comp) {
+			_mergeSort(&(_end->next));
 		}
 
 		void reverse() {
