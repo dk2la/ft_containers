@@ -1,65 +1,64 @@
+#include <iostream>
+
 namespace ft {
-	template < class Key,                                     // map::key_type
-			class T,                                       // map::mapped_type
-			class Compare = less<Key>,                     // map::key_compare
-			class Alloc = allocator<pair<const Key,T> >    // map::allocator_type
+	template<
+			class Key,
+			class T,
+			class Compare = std::less<Key>,
+			class Allocator = std::allocator<std::pair<const Key, T> >
 	>
 	class map {
-		class iterator;
-		class const_iterator;
-		class reverse_iterator;
-		class const_reverse_iterator;
+	public:
+		class 	iterator;
+		class 	const_iterator;
+		class 	reverse_iterator;
+		class 	const_reverse_iterator;
 
-		typedef Key									key_type;
-		typedef T									mapped_type;
-		typedef pair<const key_type, mapped_type >	value_type;
-		typedef Compare								key_compare;
-		typedef	Alloc								allocator_type;
-		typedef	value_type &						reference;
-		typedef const value_type &					const_reference;
-		typedef value_type *						pointer;
-		typedef const value_type *					const_pointer;
-		typedef ptrdiff_t							difference_type;
-		typedef size_t								size_type;
+		typedef Key											key_type;
+		typedef T											mapped_type;
+		typedef std::pair<const key_type, mapped_type>		value_type;
+		typedef Compare										key_compare;
+		typedef Allocator 									allocator_type;
+		typedef value_type &								reference;
+		typedef const value_type &							const_reference;
+		typedef value_type *								pointer;
+		typedef const value_type *							const_pointer;
+		typedef size_t 										size_type;
+		typedef ptrdiff_t 									difference_type;
+
+		class value_compare : public std::binary_function<value_type, value_type, bool> {
+		public:
+			key_compare comp;
+
+			explicit value_compare(key_compare c) : comp(c) {};
+		public:
+			bool operator()(const value_type& x, const value_type& y) const { return comp(x.first, y.first); };
+		};
 
 		template<bool B, class C = void>
 		struct enable_if {};
-
 		template <class C>
 		struct enable_if <true, C> { typedef T type; };
 	private:
-		template <class Key, class T, class Compare, class Alloc>
-		class map<Key,T,Compare,Alloc>::value_compare
-		{   // in C++98, it is required to inherit binary_function<value_type,value_type,bool>
-			friend class map;
-		protected:
-			Compare comp;
-			value_compare (Compare c) : comp(c) {}  // constructed with map's comparison object
-		public:
-			typedef bool result_type;
-			typedef value_type first_argument_type;
-			typedef value_type second_argument_type;
-			bool operator() (const value_type& x, const value_type& y) const { return comp(x.first, y.first); }
-		}
+		const static bool black = false;
+		const static bool red = true;
 
-		static bool black = false;
-		static bool red = true;
 		allocator_type _alloc;
-		typedef struct Map {
+		typedef struct Node {
 			pointer		content;
-			struct Map*	left;
-			struct Map* right;
-			struct Map*	parent;
+			struct Node*	left;
+			struct Node* right;
+			struct Node*	parent;
 			bool		color;
-		}				_t_map;
+		}				_Node;
 
 		size_type 		_size;
 		key_compare 	_compare;
-		_t_map*			_rootNode;
-		_t_map*			_beginNode;
-		_t_map*			_endNode;
+		_Node*			_rootNode;
+		_Node*			_beginNode;
+		_Node*			_endNode;
 
-		typedef typename allocator_type::template rebind<_t_map>::other allocator_rebind_type;
+		typedef typename allocator_type::template rebind<_Node>::other allocator_rebind_type;
 		allocator_rebind_type _allocator_rebind;
 
 		void	_createBeginEndNode() {
@@ -69,15 +68,16 @@ namespace ft {
 			_beginNode->right = nullptr;
 
 			_beginNode = _allocator_rebind.allocate(1);
-			_beginNode = _allocator_rebind.allocate(1);
+			_beginNode->content = _alloc.allocate(1);
 			_beginNode->left = nullptr;
-			_beginNode->right = nulltpr;
+			_beginNode->right = nullptr;
+			std::cout << "HERE" << std::endl;
 		}
 
-		_t_map*	_createNode(bool color, const_reference val, _t_map* parent, size_type size) {
-			_t_map*	tmpNode = _allocator_rebind.allocate(1);
+		_Node*	_createNode(bool color, const_reference val, _Node* parent, size_type size) {
+			_Node*	tmpNode = _allocator_rebind.allocate(1);
 			tmpNode->content = _alloc.allocate(1);
-			tmpNode->content = val;
+			_alloc.construct(tmpNode->content, val);
 			tmpNode->left = nullptr;
 			tmpNode->right = nullptr;
 			tmpNode->parent = parent;
@@ -86,8 +86,8 @@ namespace ft {
 			return tmpNode;
 		}
 
-		void _insertRootNode(void) {
-			_rootNode = _createNode(black, val, nullptr, 1);
+		void _insertRootNode(bool color, const_reference val, _Node* parent, size_type size) {
+			_rootNode = _createNode(color, val, parent, size);
 			_rootNode->left = _beginNode;
 			if (_beginNode)
 				_beginNode->parent = _rootNode;
@@ -96,26 +96,26 @@ namespace ft {
 				_endNode->parent = _rootNode;
 		}
 
-		std::pair<iterator, bool> _otherInsertCases(_t_map* currentNode, const_reference val) {
-			int comp = _compare(val.first, currentNode->content->first) | _compare(currentNode->content->first, val.first); // 0 если равны, 1 если меньше или больше
+		std::pair<iterator, bool> _otherInsertCases(_Node* currentNode, const_reference val) {
+			int comp = ((_compare(val.first, currentNode->content->first)) | (_compare(currentNode->content->first, val.first))); // 0 если равны, 1 если меньше или больше
 
 			if (comp == 0)
-				return std::pair<iterator(currentNode), false>; // Не добавляем одинаковые значения, возвращаем false, как флаг недобавленной node
+				return std::make_pair(iterator(currentNode), false); // Не добавляем одинаковые значения, возвращаем false, как флаг недобавленной node
 			else if (comp == 1) {
 				if ((comp = _compare(val.first, currentNode->content->first)) == 1 && currentNode->left) //TODO может быть понадобится проверка на _beginNode rootNode != _beginNode
-					_otherInsertCase(currentNode, val);
+					return _otherInsertCases(currentNode, val);
 				else if ((comp = _compare(val.first, currentNode->content->first)) == 0 && currentNode->right) //TODO может быть понадобится проверка на _endNode rootNode != _endNode
-					_otherInsertCases(currentNode, val);
-				else {
-					_t_map* tmpNode = _createNode(red, val, currentNode, 1);
-					if (comp == 0) ? _insertLeftNode(tmpNode, currentNode) : _insertRightNode(tmpNode, currentNode);
-					_balance(currentNode);
-					return std::make_pair(iterator(tmpNode), true);
-				}
+					return _otherInsertCases(currentNode, val);
+
 			}
+			_Node* tmpNode = _createNode(red, val, currentNode, 1); // Создаем newNode, все новые ноды создаются с красным цветом
+			(comp = _compare(val.first, currentNode->content->first) == 1) ? _insertLeftNode(tmpNode, currentNode) : _insertRightNode(tmpNode, currentNode); // В зависимости от значения раскидываем node
+			_balance(currentNode); // балансируем дерево
+			return std::make_pair(iterator(tmpNode), true);
+
 		}
 
-		void	_insertLeftNode(_t_map* leftNode, _t_map* parentNode) {
+		void	_insertLeftNode(_Node* leftNode, _Node* parentNode) {
 			if (parentNode->left == _beginNode) {
 				leftNode->left = _beginNode;
 				if (_beginNode)
@@ -126,7 +126,7 @@ namespace ft {
 				leftNode->parent = parentNode;
 		}
 
-		void	_insertRightNode(_t_map* rightNode, _t_map* parentNode) {
+		void	_insertRightNode(_Node* rightNode, _Node* parentNode) {
 			if (parentNode->right == _beginNode) {
 				rightNode->left = _beginNode;
 				if (_beginNode)
@@ -137,8 +137,8 @@ namespace ft {
 				rightNode->parent = parentNode;
 		}
 
-		_t_map*		_rotateLeft(_t_map* node) {
-			_t_map*	rightTmp = node->right;
+		_Node*		_rotateLeft(_Node* node) { // Поднимаем левую находящуюся снизу ноду на узел выше
+			_Node*	rightTmp = node->right;
 			node->right = rightTmp->left;
 			rightTmp->left = node;
 			rightTmp->color = rightTmp->left->color;
@@ -146,8 +146,8 @@ namespace ft {
 			return rightTmp;
 		}
 
-		_t_map*		_rotateRight(_t_map* node) {
-			_t_map*	leftTmp = node->left;
+		_Node*		_rotateRight(_Node* node) { // Поднимаем правую находящуюся снизу ноду на узел выше
+			_Node*	leftTmp = node->left;
 			node->left = leftTmp->right;
 			leftTmp->right = node;
 			leftTmp->color = leftTmp->right->color;
@@ -155,32 +155,374 @@ namespace ft {
 			return leftTmp;
 		}
 
-		_t_map*		_balance(_t_map* node) {
+		_Node*		_balance(_Node* node) {
 			if (_isRed(node->right))
 				node = _rotateLeft(node);
 			if (_isRed(node->left) && _isRed(node->left->left))
 				node = _rotateRight(node);
 			if (_isRed(node->left) && _isRed(node->right))
 				_colorFlip(node);
+			return (node);
 		}
 
-		_t_map*		_colorFlip(_t_map* currentNode) {
+		_Node*		_colorFlip(_Node* currentNode) { // делаем инверсию цветов
 			currentNode->color = !currentNode->color;
 			currentNode->left->color = !currentNode->left->color;
 			currentNode->right->color = !currentNode->right->color;
 			return currentNode;
 		}
 
-		bool	_isRed(_t_map* node) {
-			if (node == nullptr)
-				return (false);
-			return (node->color == red);
+		bool	_isRed(_Node* currentNode) {
+			if (currentNode == nullptr) // Проверяем сущуствует ли node
+				return (black); // возвращяем black, тк все lastNode, имееют черный цвет
+			return (currentNode->color == red);
 		}
+
+		void	_linkRightNode(_Node* parent, _Node* right) {
+			parent->right = right; // линкуем родителя с новой rightNode, они модет быть, либо nullptr
+			if (right) // если rightNode != nullptr
+				right->parent = parent;// линкуем значение parent с parentNode, если _rootNode, то _rootNode->parent == nullptr
+		}
+
+		void	_linkLeftNode(_Node* parent, _Node* left) {
+			parent->left = left; // линкуем родителя с новой leftNode, они модет быть, либо nullptr
+			if (left) // если leftNode != nullptr
+				left->parent = parent; // линкуем значение parent с parentNode, если _rootNode, то _rootNode->parent == nullptr
+		}
+
+		_Node*	_deleteNode(const key_type& k, _Node* currentNode) {
+			int comp = ((_compare(k, currentNode->content->first)) | (_compare(currentNode->content->first, k))); // 0 если они равны, в противном случае 1
+
+			if (comp == 1 &&  _compare(k, currentNode->content->first) == 1) {// compare == 1 && _comp(k, currentNode->content->first) == 1, значит мы идем по левой ветке
+				if (!_isRed(currentNode->left) && !_isRed(currentNode->left->left))
+					currentNode = _moveRedLeft(currentNode->left);
+				_linkLeftNode(currentNode, _deleteNode(k, currentNode->left));
+				return _balance(currentNode);
+			}
+			else {
+				if (_isRed(currentNode->left)) { // если k > currentNode->content->first, то мы будем всегда поднимать краную левую ветку, для простоты итерирования
+					currentNode = _rotateRight(currentNode);
+					_linkRightNode(currentNode, _deleteNode(k, currentNode->right)); // линкуем currentNode(parent) со следуущей findNode, тем самым рекурсивно раскручивая связи
+					return _balance(currentNode);
+				}
+				if (comp == 0 && (currentNode == nullptr || currentNode == _endNode)) {
+					_Node*	tmpLink; // tmpLink хранит в себе связь с _endNode, которую до этого хранила удаленная currentNode
+					if (!currentNode->left && currentNode->right == _endNode)
+						tmpLink = currentNode->right;
+					else
+						tmpLink = currentNode->left;
+//					_destroyNode(currentNode); //  удаляем currentNode
+					return tmpLink; // возвращяем link на _endNode;
+				}
+				if (!_isRed(currentNode->right) && !_isRed(currentNode->right->left))
+					currentNode = _moveRedRight(currentNode);
+				if (_compare(k, currentNode->content->first) == 0) {
+					_Node* tmpLink;
+					_Node*	tmpCurrent = currentNode->right;
+					while (tmpCurrent->left)
+						tmpCurrent = tmpCurrent->left;
+					tmpLink = tmpCurrent;
+					return tmpLink;
+				}
+			}
+			return nullptr;
+		}
+
+		_Node*	_moveRedLeft(_Node* currentNode) {
+			_colorFlip(currentNode);
+			if (_isRed(currentNode->right->left)) {
+				currentNode->right = _rotateRight(currentNode->right);
+				currentNode = _rotateLeft(currentNode);
+				_colorFlip(currentNode);
+			}
+			return currentNode;
+		}
+
+		_Node*	_moveRedRight(_Node* currentNode) {
+			_colorFlip(currentNode);
+			if (_isRed(currentNode->left->left)) {
+				currentNode = _rotateRight(currentNode);
+				_colorFlip(currentNode);
+			}
+			return currentNode;
+		}
+
 	public:
+		/* iterator */
+		class iterator : public std::iterator<std::bidirectional_iterator_tag, value_type> {
+		private:
+			_Node* _it;
+		public:
+			explicit iterator(_Node* it = nullptr): _it(it) {};
+			~iterator() {};
+			iterator & operator=(const iterator &it) { this->_it = it._it; return *this; };
+			iterator(const iterator &it) { *this = it; };
+			iterator & operator++() {
+				_it = nextNode(_it);
+				return *this;
+			};
+			iterator operator++(int) {
+				iterator tmp(_it);
+				operator++();
+				return tmp;
+			};
+			iterator & operator--() { _it = prevNode(_it); return *this; };
+			iterator operator--(int) {
+				iterator tmp(_it);
+				operator--();
+				return tmp;
+			};
+			bool operator==(const iterator &it) const { return this->_it == it._it; };
+			bool operator!=(const iterator &it) const { return this->_it != it._it; };
+
+			bool operator==(const const_iterator &it) const { return this->_it == it.getNode(); };
+			bool operator!=(const const_iterator &it) const { return this->_it != it.getNode(); };
+			reference operator*() const { return *(this->_it->content); }
+			pointer operator->() const { return this->_it->content; }
+			_Node *getNode() const { return _it; }
+		private:
+			_Node *findLowNode(_Node *currentNode) {
+				if (currentNode->left)
+					return findLowNode(currentNode->left);
+				return currentNode;
+			}
+
+			_Node *findHighNode(_Node *currentNode) {
+				if (currentNode->right)
+					return findHighNode(currentNode->right);
+				return currentNode;
+			}
+
+			_Node *nextNode(_Node* currentNode) {
+				if (currentNode->right)
+					return findLowNode(currentNode->right);
+				else if (currentNode->parent && currentNode->parent->left == currentNode)
+					return currentNode->parent;
+				else if (currentNode->parent->right == currentNode)
+					currentNode = currentNode->parent;
+				_Node *tmp = currentNode;
+				while (tmp->parent->right == tmp)
+					if ((tmp = tmp->parent) == nullptr)
+						return currentNode->right;
+				return tmp->parent;
+			}
+
+			_Node *prevNode(_Node* currentNode) {
+				if (currentNode->left)
+					return findHighNode(currentNode->left);
+				else if (currentNode->parent && currentNode->parent->right == currentNode)
+					return currentNode->parent;
+				_Node *tmp = currentNode;
+				while (tmp->parent->left == tmp)
+					if ((tmp = tmp->parent) == nullptr)
+						return currentNode->left;
+				return tmp->parent;
+			}
+		};
+
+		/* const_iterator */
+		class const_iterator : public std::iterator<std::bidirectional_iterator_tag, value_type const> {
+		private:
+			_Node * _it;
+		public:
+			explicit const_iterator(_Node* it = nullptr) : _it(it) {};
+			const_iterator(const const_iterator &it) { *this = it; };
+			const_iterator(const iterator &it) { *this = it; };
+			~const_iterator() {};
+			const_iterator& operator=(const const_iterator &it)  { this->_it = it._it; return *this; };
+			const_iterator& operator=(const iterator &it)  { this->_it = it.getNode(); return *this; };
+			const_iterator & operator++() { _it = nextNode(_it); return *this; };
+			const_iterator operator++(int) {
+				const_iterator tmp(_it);
+				operator++();
+				return tmp;
+			};
+			const_iterator & operator--() { _it = prevNode(_it); return *this; };
+			const_iterator operator--(int) {
+				const_iterator tmp(_it);
+				operator--();
+				return tmp;
+			};
+			bool operator==(const const_iterator &it) const { return this->_it == it._it; };
+			bool operator!=(const const_iterator &it) const { return this->_it != it._it; };
+			bool operator==(const iterator &it) const { return this->_it == it.getNode(); };
+			bool operator!=(const iterator &it) const { return this->_it != it.getNode(); };
+			const_reference operator*() const { return *(this->_it->content); };
+			const_pointer operator->() const { return this->_it->content; }
+			_Node *getNode() const { return _it; }
+		private:
+			_Node *findLowNode(_Node *currentNode) {
+				if (currentNode->left)
+					return findLowNode(currentNode->left);
+				return currentNode;
+			}
+			_Node *findHighNode(_Node *currentNode) {
+				if (currentNode->right)
+					return findHighNode(currentNode->right);
+				return currentNode;
+			}
+			_Node *nextNode(_Node* currentNode) {
+				if (currentNode->right)
+					return findLowNode(currentNode->right);
+				else if (currentNode->parent && currentNode->parent->left == currentNode)
+					return currentNode->parent;
+				else if (currentNode->parent->right == currentNode)
+					currentNode = currentNode->parent;
+				_Node *tmp = currentNode;
+				while (tmp->parent->right == tmp)
+					if ((tmp = tmp->parent) == nullptr)
+						return currentNode->right;
+				return tmp->parent;
+			}
+			_Node *prevNode(_Node* currentNode) {
+				if (currentNode->left)
+					return findHighNode(currentNode->left);
+				else if (currentNode->parent && currentNode->parent->right == currentNode)
+					return currentNode->parent;
+				_Node *tmp = currentNode;
+				while (tmp->parent->left == tmp)
+					if ((tmp = tmp->parent) == nullptr)
+						return currentNode->left;
+				return tmp->parent;
+			}
+		};
+
+		/* reverse_iterator */
+		class reverse_iterator : public std::reverse_iterator<iterator> {
+		private:
+			_Node* _it;
+		public:
+			explicit reverse_iterator(_Node* it = nullptr): _it(it) {};
+			~reverse_iterator() {};
+			reverse_iterator(const reverse_iterator &it) { *this = it; };
+			reverse_iterator & operator=(const reverse_iterator &it) { this->_it = it._it; return *this; };
+			reverse_iterator & operator++() { _it = prevNode(_it); return *this; };
+			reverse_iterator operator++(int) {
+				reverse_iterator tmp(_it);
+				operator++();
+				return tmp;
+			};
+			reverse_iterator & operator--() { _it = nextNode(_it); return *this; };
+			reverse_iterator operator--(int) {
+				reverse_iterator tmp(_it);
+				operator--();
+				return tmp;
+			};
+			bool operator==(const reverse_iterator &it) const { return this->_it == it._it; };
+			bool operator!=(const reverse_iterator &it) const { return this->_it != it._it; };
+			bool operator==(const const_reverse_iterator &it) const { return this->_it == it.getNode(); };
+			bool operator!=(const const_reverse_iterator &it) const { return this->_it != it.getNode(); };
+			value_type & operator*() const { return *(this->_it->content); };
+			value_type * operator->() const { return this->_it->content; }
+			_Node *getNode() const { return _it; }
+		private:
+			_Node *findLowNode(_Node *currentNode) {
+				if (currentNode->left)
+					return findLowNode(currentNode->left);
+				return currentNode;
+			}
+			_Node *findHighNode(_Node *currentNode) {
+				if (currentNode->right)
+					return findHighNode(currentNode->right);
+				return currentNode;
+			}
+			_Node *nextNode(_Node* currentNode) {
+				if (currentNode->right)
+					return findLowNode(currentNode->right);
+				else if (currentNode->parent && currentNode->parent->left == currentNode)
+					return currentNode->parent;
+				else if (currentNode->parent->right == currentNode)
+					currentNode = currentNode->parent;
+				_Node *tmp = currentNode;
+				while (tmp->parent->right == tmp)
+					if ((tmp = tmp->parent) == nullptr)
+						return currentNode->right;
+				return tmp->parent;
+			}
+			_Node *prevNode(_Node* currentNode) {
+				if (currentNode->left)
+					return findHighNode(currentNode->left);
+				else if (currentNode->parent && currentNode->parent->right == currentNode)
+					return currentNode->parent;
+				_Node *tmp = currentNode;
+				while (tmp->parent->left == tmp)
+					if ((tmp = tmp->parent) == nullptr)
+						return currentNode->left;
+				return tmp->parent;
+			}
+		};
+
+		/* const_reverse_iterator */
+		class const_reverse_iterator : public std::reverse_iterator<iterator> {
+		private:
+			_Node* _it;
+		public:
+			explicit const_reverse_iterator(_Node* it = nullptr): _it(it) {};
+			~const_reverse_iterator() {};
+			const_reverse_iterator & operator=(const const_reverse_iterator &it) { this->_it = it._it; return *this; };
+			const_reverse_iterator & operator=(const reverse_iterator &it) { this->_it = it.getNode(); return *this; };
+			const_reverse_iterator(const const_reverse_iterator &it) { *this = it; };
+			const_reverse_iterator(const reverse_iterator &it) { *this = it; };
+			const_reverse_iterator & operator++() { _it = prevNode(_it); return *this; };
+			const_reverse_iterator operator++(int) {
+				const_reverse_iterator tmp(_it);
+				operator++();
+				return tmp;
+			};
+			const_reverse_iterator & operator--() { _it = nextNode(_it); return *this; };
+			const_reverse_iterator operator--(int) {
+				const_reverse_iterator tmp(_it);
+				operator--();
+				return tmp;
+			};
+			bool operator==(const const_reverse_iterator &it) const { return this->_it == it._it; };
+			bool operator!=(const const_reverse_iterator &it) const { return this->_it != it._it; };
+			bool operator==(const reverse_iterator &it) const { return this->_it == it.getNode(); };
+			bool operator!=(const reverse_iterator &it) const { return this->_it != it.getNode(); };
+			reference operator*() const { return *(this->_it->content); }
+			pointer operator->() const { return this->it->content; }
+			_Node *getNode() const { return _it; }
+		private:
+			_Node *findLowNode(_Node *currentNode) {
+				if (currentNode->left)
+					return findLowNode(currentNode->left);
+				return currentNode;
+			}
+			_Node *findHighNode(_Node *currentNode) {
+				if (currentNode->right)
+					return findHighNode(currentNode->right);
+				return currentNode;
+			}
+			_Node *nextNode(_Node* currentNode) {
+				if (currentNode->right)
+					return findLowNode(currentNode->right);
+				else if (currentNode->parent && currentNode->parent->left == currentNode)
+					return currentNode->parent;
+				else if (currentNode->parent->right == currentNode)
+					currentNode = currentNode->parent;
+				_Node *tmp = currentNode;
+				while (tmp->parent->right == tmp)
+					if ((tmp = tmp->parent) == nullptr)
+						return currentNode->right;
+				return tmp->parent;
+			}
+			_Node *prevNode(_Node* currentNode) {
+				if (currentNode->left)
+					return findHighNode(currentNode->left);
+				else if (currentNode->parent && currentNode->parent->right == currentNode)
+					return currentNode->parent;
+				_Node *tmp = currentNode;
+				while (tmp->parent->left == tmp)
+					if ((tmp = tmp->parent) == nullptr)
+						return currentNode->left;
+				return tmp->parent;
+			}
+		};
+
 		/* Constructor */
 		/* empty */
 		explicit map (const key_compare& comp = key_compare(),
-					  const allocator_type& alloc = allocator_type()): _alloc(alloc), _size(0), _compare(key_compare) {
+					  const allocator_type& alloc = allocator_type()): _alloc(alloc), _size(0), _compare(comp) {
 			_createBeginEndNode();
 		}
 		/* range */
@@ -188,7 +530,7 @@ namespace ft {
 		map (InputIterator first, InputIterator last,
 			 const key_compare& comp = key_compare(),
 			 const allocator_type& alloc = allocator_type(),
-			 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0): _alloc(alloc), _size(0), _compare(key_compare) {
+			 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0): _alloc(alloc), _size(0), _compare(comp) {
 				_createBeginEndNode();
 			 	insert(first, last);
 			 }
@@ -215,17 +557,16 @@ namespace ft {
 		}
 
 		/* ITERATORS */
-		iterator begin();
-		const_iterator begin() const
+		iterator		begin() { return (_size != 0) ? iterator(_beginNode->parent) : iterator(_endNode); };
+		const_iterator 	begin() const { return (_size != 0) ? const_iterator(_beginNode->parent) : const_iterator(_endNode); };
+		iterator		end() { return iterator(_endNode); };
+		const_iterator	end() const { return const_iterator(_endNode); };
 
-		iterator end();
-		const_iterator end() const;
-
-		reverse_iterator rbegin();
-		const_reverse_iterator rbegin() const;
-
-		reverse_iterator rend();
-		const_reverse_iterator rend() const;
+		/* Reverse Iterators */
+		reverse_iterator 		rbegin() { return (_size != 0) ? reverse_iterator(_endNode->parent) : reverse_iterator(_beginNode); };
+		const_reverse_iterator	rbegin() const { return (_size != 0) ? const_reverse_iterator(_endNode->parent) : const_reverse_iterator(_beginNode); };
+		reverse_iterator 		rend() { return reverse_iterator(_beginNode); };
+		const_reverse_iterator	rend() const { return const_reverse_iterator(_beginNode); };
 
 		/* CAPACITY */
 		bool empty() const {
@@ -245,23 +586,26 @@ namespace ft {
 
 		/* Element Access */
 		mapped_type& operator[] (const key_type& k) {
-			const_iterator it = find(k);
+			iterator it = find(k);
 			if (it == end())
-				return (std::make_pair)
+				return insert(std::make_pair(k, mapped_type())).first->second;
 			else
 				return it->second;
 		}
 
 		/* Mpdifiers */
 		/* single element */
-		std::pair<iterator,bool> insert (const value_type& val) {
+		std::pair<iterator,bool> insert (const_reference val) {
 			if (_size == 0) {
-				_insertRootNode();
+				_insertRootNode(black, val, nullptr, 1);
 				return std::make_pair(iterator(_rootNode), true); // Добавляет iterator на root node, тк it ~= pair;
 			}
 			return _otherInsertCases(_rootNode, val);
 		}
-		iterator insert (iterator position, const value_type& val) {} // TODO разобрать и дописать insert по итератору позиции
+		iterator insert (iterator position, const_reference val) {
+			(void)position;
+			return insert(val).first;
+		}
 
 		template <class InputIterator>
 		void insert (InputIterator first, InputIterator last,
@@ -272,20 +616,34 @@ namespace ft {
 			}
 		}
 
-		void erase (iterator position);
-		size_type erase (const key_type& k);
-		void erase (iterator first, iterator last);
+		void erase (iterator position) {
+			erase(position->first);
+		}
+
+		size_type erase(const key_type& k) {
+			if (_size == 0 || find(k) == end())
+				return 0;
+			_deleteNode(k, _rootNode);
+			return 1;
+		}
+
+		void erase (iterator first, iterator last) {
+			while (first != last) {
+				erase(first->first);
+				first++;
+			}
+		}
 
 		void swap (map& x) {
-			_t_map* tmpRootNode = _rootNode;
+			_Node* tmpRootNode = _rootNode;
 			_rootNode = x._rootNode;
 			x._rootNode = tmpRootNode;
 
-			_t_map*	tmpBeginNode = _beginNode;
+			_Node*	tmpBeginNode = _beginNode;
 			_beginNode = x._beginNode;
 			x._beginNode = tmpBeginNode;
 
-			_t_map*	tmpEndNode = _endNode;
+			_Node*	tmpEndNode = _endNode;
 			_endNode = x._endNode;
 			x._endNode = tmpEndNode;
 
@@ -295,13 +653,13 @@ namespace ft {
 		}
 
 		void clear() {
-			while (size != 0)
+			while (_size != 0)
 				erase(begin());
 		}
 
 		/* Observers */
 		key_compare key_comp() const { return _compare; }
-		value_compare value_comp() const { return _}
+		value_compare value_comp() const { return value_compare(_compare); }
 
 		/* Operations */
 		iterator find (const key_type& k) {
@@ -327,14 +685,132 @@ namespace ft {
 			return 0;
 		}
 
-		iterator lower_bound (const key_type& k);
-		const_iterator lower_bound (const key_type& k) const;
+		iterator lower_bound (const key_type& k) {
+			iterator it = begin();
+			for (; it != end() && !_compare(k, it->first); ++it)
+				NULL;
+			return it;
+		}
+		const_iterator lower_bound (const key_type& k) const {
+			const_iterator it = begin();
+			for (; it != end() && !_compare(k, it->first); ++it)
+				NULL;
+			return it;
+		}
 
-		iterator upper_bound (const key_type& k);
-		const_iterator upper_bound (const key_type& k) const;
+		iterator upper_bound (const key_type& k) {
+			iterator it = lower_bound(k);
+			if (it != end() && !_compare(k, it->first) && !_compare(it->first, k))
+				return (++it);
+			else
+				return (it);
+		}
+		const_iterator upper_bound (const key_type& k) const {
+			const_iterator it = lower_bound(k);
+			if (it != end() && !_compare(k, it->first) && !_compare(it->first, k))
+				return (++it);
+			else
+				return (it);
+		}
 
-		pair<const_iterator,const_iterator> equal_range (const key_type& k) const;
-		pair<iterator,iterator>             equal_range (const key_type& k);
+		std::pair<const_iterator,const_iterator> equal_range (const key_type& k) const {
+			return (std::make_pair(lower_bound(k), upper_bound(k)));
+		}
 
+		std::pair<iterator,iterator>             equal_range (const key_type& k) {
+			return (std::make_pair(lower_bound(k), upper_bound(k)));
+		}
 	};
+	template < class Key, class T, class Compare, class Alloc >
+	bool operator==(const ft::map<Key, T, Compare, Alloc > &lhs, const ft::map<Key, T, Compare, Alloc > &rhs)
+	{
+
+		if (lhs.size() != rhs.size())
+			return (false);
+		typename ft::map<Key, T, Compare, Alloc >::const_iterator beg1 = lhs.begin();
+		typename ft::map<Key, T, Compare, Alloc >::const_iterator beg2 = rhs.begin();
+		typename ft::map<Key, T, Compare, Alloc >::const_iterator end1 = lhs.end();
+		typename ft::map<Key, T, Compare, Alloc >::const_iterator end2 = rhs.end();
+
+		while (beg1 != end1 && beg2 != end2 && *beg1 == *beg2)
+		{
+			beg1++;
+			beg2++;
+		}
+
+		if (beg1 == end1 && beg2 == end2)
+			return (true);
+		return (false);
+	}
+
+	template <class Key, class T, class Compare = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, T> > >
+	bool operator!=(const ft::map<Key, T, Compare, Allocator > &lhs, const ft::map<Key, T, Compare, Allocator > &rhs)
+	{
+		return (!(lhs == rhs));
+	}
+
+	template <class Key, class T, class Compare = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, T> > >
+	bool operator<(const ft::map<Key, T, Compare, Allocator > &lhs, const ft::map<Key, T, Compare, Allocator > &rhs)
+	{
+
+		if (lhs.size() < rhs.size())
+			return (true);
+		if (lhs.size() > rhs.size())
+			return (false);
+		typename ft::map<Key, T, Compare, Allocator >::const_iterator beg1 = lhs.begin();
+		typename ft::map<Key, T, Compare, Allocator >::const_iterator beg2 = rhs.begin();
+		typename ft::map<Key, T, Compare, Allocator >::const_iterator end1 = lhs.end();
+		typename ft::map<Key, T, Compare, Allocator >::const_iterator end2 = rhs.end();
+
+		while (beg1 != end1 && beg2 != end2 && *beg1 == *beg2)
+		{
+			beg1++;
+			beg2++;
+		}
+
+		if ((beg1 == end1 && beg2 == end2) || beg2 == end2 || *beg1 >= *beg2)
+			return (false);
+		return (true);
+	}
+
+	template <class Key, class T, class Compare = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, T> > >
+	bool operator<=(const ft::map<Key, T, Compare, Allocator > &lhs, const ft::map<Key, T, Compare, Allocator > &rhs)
+	{
+		return (lhs < rhs || lhs == rhs);
+	}
+
+	template <class Key, class T, class Compare = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, T> > >
+	bool operator>(const ft::map<Key, T, Compare, Allocator > &lhs, const ft::map<Key, T, Compare, Allocator > &rhs)
+	{
+
+		if (lhs.size() > rhs.size())
+			return (true);
+		if (lhs.size() < rhs.size())
+			return (false);
+		typename ft::map<Key, T, Compare, Allocator >::const_iterator beg1 = lhs.begin();
+		typename ft::map<Key, T, Compare, Allocator >::const_iterator beg2 = rhs.begin();
+		typename ft::map<Key, T, Compare, Allocator >::const_iterator end1 = lhs.end();
+		typename ft::map<Key, T, Compare, Allocator >::const_iterator end2 = rhs.end();
+
+		while (beg1 != end1 && beg2 != end2 && *beg1 == *beg2)
+		{
+			beg1++;
+			beg2++;
+		}
+		if ((beg1 == end1 && beg2 == end2) || beg1 == end1 || *beg1 <= *beg2)
+			return (false);
+		return (true);
+	}
+
+	template <class Key, class T, class Compare = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, T> > >
+	bool operator>=(const ft::map<Key, T, Compare, Allocator > &lhs, const ft::map<Key, T, Compare, Allocator > &rhs)
+	{
+		return (lhs > rhs || lhs == rhs);
+	}
+
+	template <class Key, class T, class Compare = std::less<Key>, class Allocator = std::allocator<std::pair<const Key, T> > >
+	void swap(ft::map<Key, T, Compare, Allocator > &lhs, ft::map<Key, T, Compare, Allocator > &rhs)
+	{
+		lhs.swap(rhs);
+	}
 }
