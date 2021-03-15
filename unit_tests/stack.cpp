@@ -1,19 +1,10 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   stack.cpp                                          :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: matrus <marvin@42.fr>                      +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2020/11/28 10:38:08 by matrus            #+#    #+#             */
-/*   Updated: 2020/11/28 10:38:12 by matrus           ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 #include "gtest/gtest.h"
 #include "../srcs/stack.hpp"
+#include "../srcs/list.hpp"
 #include <stack>
 #include <string>
+#include <iostream>
+#include <list>
 
 class StackFullTest : public testing::Test {
 protected:
@@ -24,8 +15,8 @@ protected:
 		}
 	}
 
-	std::vector<std::string> svec;
-	ft::vector<std::string> fvec;
+	std::list<std::string> svec;
+	ft::list<std::string> fvec;
 
 };
 
@@ -56,8 +47,8 @@ TEST_F(StackFullTest, testFunctional) {
 	EXPECT_EQ(s.empty(), f.empty());
 	EXPECT_EQ(s.size(), f.size());
 
-	std::stack<std::string, std::vector<std::string>> s2(svec);
-	ft::stack<std::string, ft::vector<std::string>>  f2(fvec);
+	std::stack<std::string, std::list<std::string>> s2(svec);
+	ft::stack<std::string, ft::list<std::string>>  f2(fvec);
 	EXPECT_EQ(s2.empty(), f2.empty());
 	EXPECT_EQ(s2.size(), f2.size());
 
@@ -81,8 +72,8 @@ TEST_F(StackFullTest, testFunctional) {
 }
 
 TEST_F(StackFullTest, testOperators) {
-	std::stack<std::string, std::vector<std::string> > s1, s2;
-	ft::stack<std::string, ft::vector<std::string> > f1, f2;
+	std::stack<std::string, std::list<std::string> > s1, s2;
+	ft::stack<std::string, ft::list<std::string> > f1, f2;
 
 	s1.push("123");
 	s1.push("321");
