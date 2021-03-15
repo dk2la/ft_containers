@@ -211,9 +211,9 @@ class vector {
 			size_type n = static_cast<size_type>(last.operator->() - first.operator->());
 			difference_type end_position = end().getElement() - begin().getElement();
 			difference_type current_position = position.getElement() - begin().getElement();
-			if (_size + n > _capacity)
+			if (_size + n >= _capacity)
 				reserve(_capacity + n + 15);
-			for (size_type i = end_position + n; i >= current_position + n; --i)
+			for (size_type i = end_position + n; i != current_position + n; --i)
 				_array[i] = _array[i - n];
 			for (size_type i = current_position; i != current_position + n; ++i, ++first)
 				_alloc.construct(_array + i, *first);

@@ -44,13 +44,13 @@ namespace ft {
 		const static bool red = true;
 
 		allocator_type _alloc;
-		typedef struct Node {
-			pointer		content;
-			struct Node*	left;
-			struct Node* right;
-			struct Node*	parent;
-			bool		color;
-		}				_Node;
+		typedef struct 		_sNode {
+			pointer			_content;
+			_sNode*			_left;
+			_sNode*			_right;
+			_sNode*			_parent;
+			bool			_color;
+		}					_Node;
 
 		size_type 		_size;
 		key_compare 	_compare;
@@ -61,192 +61,275 @@ namespace ft {
 		typedef typename allocator_type::template rebind<_Node>::other allocator_rebind_type;
 		allocator_rebind_type _allocator_rebind;
 
-		void	_createBeginEndNode() {
-			_beginNode = _allocator_rebind.allocate(1);
-			_beginNode->content = _alloc.allocate(1);
-			_beginNode->left = nullptr;
-			_beginNode->right = nullptr;
-
-			_beginNode = _allocator_rebind.allocate(1);
-			_beginNode->content = _alloc.allocate(1);
-			_beginNode->left = nullptr;
-			_beginNode->right = nullptr;
-			std::cout << "HERE" << std::endl;
+		_Node*						_createNode(bool color, _Node* parent, const value_type& val, size_type size) {
+			_Node*	newNode = _allocator_rebind.allocate(1);
+			newNode->_parent = parent;
+			newNode->_left = nullptr;
+			newNode->_right = nullptr;
+			newNode->_color = color;
+			newNode->_content = _alloc.allocate(1);
+			_alloc.construct(newNode->_content, val);
+			_size += size;
+			return newNode;
 		}
 
-		_Node*	_createNode(bool color, const_reference val, _Node* parent, size_type size) {
-			_Node*	tmpNode = _allocator_rebind.allocate(1);
-			tmpNode->content = _alloc.allocate(1);
-			_alloc.construct(tmpNode->content, val);
-			tmpNode->left = nullptr;
-			tmpNode->right = nullptr;
-			tmpNode->parent = parent;
-			tmpNode->color = color;
-			_size += size;
+		void						_linkLeft(_Node* parent, _Node* left) {
+			parent->_left = left;
+			if (left)
+				left->_parent = parent;
+		}
+
+		void						_linkRight(_Node* parent, _Node* right) {
+			parent->_right = right;
+			if (right)
+				right->_parent = parent;
+		}
+
+		std::pair<iterator, bool>	_createRoot(bool color, _Node* parent, const value_type& val, size_type size) {
+			_rootNode = _createNode(color, parent, val, size);
+			_rootNode->_left = _beginNode;
+			if (_beginNode)
+				_beginNode->_parent = _rootNode;
+			_rootNode->_right = _endNode;
+			if (_endNode)
+				_endNode->_parent = _rootNode;
+			return std::make_pair(iterator(_rootNode), true);
+		}
+
+		bool						isRed(_Node* cur) {
+			if (!cur)
+				return black;
+			return (cur->_color == red);
+		}
+
+		void						_insertLeft(_Node* insertNode, _Node* parent) {
+			if (parent->_left == _beginNode)
+				_linkLeft(insertNode, _beginNode);
+			parent->_left = insertNode;
+		}
+
+		void						_insertRight(_Node* insertNode, _Node* parent) {
+			if (parent->_right == _endNode)
+				_linkRight(insertNode, _endNode);
+			parent->_right = insertNode;
+		}
+
+		_Node*						_rotateLeft(_Node* cur) {
+			_Node*	tmpNode = cur->_right;
+
+			tmpNode->_parent = nullptr;
+			if (cur->_parent) {
+				if (cur->_parent->_left == cur)
+					_linkLeft(cur->_parent, tmpNode);
+				else
+					_linkRight(cur->_parent, tmpNode);
+			}
+			else
+				tmpNode->_parent = cur->_parent;
+			_linkRight(cur, tmpNode->_left);
+			_linkLeft(tmpNode, cur);
+			if (cur == _rootNode)
+				_rootNode = tmpNode;
+			tmpNode->_color = cur->_color;
+			cur->_color = red;
 			return tmpNode;
 		}
 
-		void _insertRootNode(bool color, const_reference val, _Node* parent, size_type size) {
-			_rootNode = _createNode(color, val, parent, size);
-			_rootNode->left = _beginNode;
-			if (_beginNode)
-				_beginNode->parent = _rootNode;
-			_rootNode->right = _endNode;
-			if (_endNode)
-				_endNode->parent = _rootNode;
+		_Node*					_rotateRight(_Node* cur) {
+			_Node* tmpNode = cur->_left;
+
+			tmpNode->_parent = nullptr;
+			if (cur->_parent) {
+				if (cur->_parent->_left == cur)
+					_linkLeft(cur->_parent, tmpNode);
+				else
+					_linkRight(cur->_parent, tmpNode);
+			}
+			else
+				tmpNode->_parent = cur->_parent;
+			_linkLeft(cur, tmpNode->_right);
+			_linkRight(tmpNode, cur);
+			if (cur == _rootNode)
+				_rootNode = tmpNode;
+			tmpNode->_color = cur->_color;
+			cur->_color = red;
+			return tmpNode;
 		}
 
-		std::pair<iterator, bool> _otherInsertCases(_Node* currentNode, const_reference val) {
-			int comp = ((_compare(val.first, currentNode->content->first)) | (_compare(currentNode->content->first, val.first))); // 0 если равны, 1 если меньше или больше
+		void					_inverseColor(_Node* cur) {
+			if (cur && cur != _rootNode)
+				cur->_color = !cur->_color;
+			if (cur->_left && cur->_left != _beginNode) // если есть нода и она не является листом дерева, то перекрашиваем
+				cur->_left->_color = !cur->_left->_color;
+			if (cur->_right && cur->_right != _endNode)
+				cur->_right->_color = !cur->_right->_color;
+		}
+
+		_Node*					_treeBalance(_Node*	cur) {
+			if (isRed(cur->_right) && !isRed(cur->_left))
+				cur = _rotateLeft(cur);
+			if (isRed(cur->_left) && cur->_left && isRed(cur->_left->_left))
+				cur = _rotateRight(cur);
+			if (isRed(cur->_right) && isRed(cur->_left))
+				_inverseColor(cur);
+			return cur;
+		}
+
+		std::pair<iterator, bool>	_recursiveInsert(_Node* cur, const value_type& val) {
+			int comp = _compare(val.first, cur->_content->first) | _compare(cur->_content->first, val.first);
 
 			if (comp == 0)
-				return std::make_pair(iterator(currentNode), false); // Не добавляем одинаковые значения, возвращаем false, как флаг недобавленной node
+				return std::make_pair(iterator(cur), false);
 			else if (comp == 1) {
-				if ((comp = _compare(val.first, currentNode->content->first)) == 1 && currentNode->left) //TODO может быть понадобится проверка на _beginNode rootNode != _beginNode
-					return _otherInsertCases(currentNode, val);
-				else if ((comp = _compare(val.first, currentNode->content->first)) == 0 && currentNode->right) //TODO может быть понадобится проверка на _endNode rootNode != _endNode
-					return _otherInsertCases(currentNode, val);
-
+				comp = _compare(val.first, cur->_content->first);
+				if (comp == 1 && cur->_left && cur->_left != _beginNode)
+					return _recursiveInsert(cur->_left, val);
+				else if (comp == 0 && cur->_right && cur->_right != _endNode)
+					return _recursiveInsert(cur->_right, val);
 			}
-			_Node* tmpNode = _createNode(red, val, currentNode, 1); // Создаем newNode, все новые ноды создаются с красным цветом
-			(comp = _compare(val.first, currentNode->content->first) == 1) ? _insertLeftNode(tmpNode, currentNode) : _insertRightNode(tmpNode, currentNode); // В зависимости от значения раскидываем node
-			_balance(currentNode); // балансируем дерево
-			return std::make_pair(iterator(tmpNode), true);
 
+			_Node* newNode = _createNode(red, cur, val, 1);
+			(comp == 1) ? _insertLeft(newNode, cur) : _insertRight(newNode, cur);
+			_treeBalance(cur);
+			return std::make_pair(iterator(newNode), true);
 		}
 
-		void	_insertLeftNode(_Node* leftNode, _Node* parentNode) {
-			if (parentNode->left == _beginNode) {
-				leftNode->left = _beginNode;
-				if (_beginNode)
-					_beginNode->parent = leftNode;
+		iterator				_recursivefind(_Node* cur, const key_type& key) {
+			if (!cur)
+				return end();
+			int comp = _compare(key, cur->_content->first) | _compare(cur->_content->first, key);
+
+			if (comp == 0)
+				return iterator(cur);
+			else if (comp == 1) {
+				comp = _compare(key, cur->_content->first);
+				if (comp == 1 && cur->_left && cur->_left != _beginNode)
+					return _recursivefind(cur->_left, key);
+				else if (comp == 0 && cur->_right && cur->_right != _endNode)
+					return _recursivefind(cur->_right, key);
 			}
-			parentNode->left = leftNode; // LinkLeft
-			if (leftNode)
-				leftNode->parent = parentNode;
+			return end();
 		}
 
-		void	_insertRightNode(_Node* rightNode, _Node* parentNode) {
-			if (parentNode->right == _beginNode) {
-				rightNode->left = _beginNode;
-				if (_beginNode)
-					_beginNode->parent = rightNode;
+		const_iterator				_recursivefindconst(_Node* cur, const key_type& key) const {
+			if (!cur)
+				return end();
+			int comp = _compare(key, cur->_content->first) | _compare(cur->_content->first, key);
+
+			if (comp == 0)
+				return iterator(cur);
+			else if (comp == 1) {
+				comp = _compare(key, cur->_content->first);
+				if (comp == 1 && cur->_left && cur->_left != _beginNode)
+					return _recursivefindconst(cur->_left, key);
+				else if (comp == 0 && cur->_right && cur->_right != _endNode)
+					return _recursivefindconst(cur->_right, key);
 			}
-			parentNode->right = rightNode; // LinkRight
-			if (rightNode)
-				rightNode->parent = parentNode;
+			return end();
 		}
 
-		_Node*		_rotateLeft(_Node* node) { // Поднимаем левую находящуюся снизу ноду на узел выше
-			_Node*	rightTmp = node->right;
-			node->right = rightTmp->left;
-			rightTmp->left = node;
-			rightTmp->color = rightTmp->left->color;
-			rightTmp->left->color = red;
-			return rightTmp;
+		size_type 				_recursivecount(_Node* cur, const key_type& key) const {
+			int comp = _compare(key, cur->_content->first) | _compare(cur->_content->first, key);
+
+			if (comp == 0)
+				return 1;
+			else if (comp == 1) {
+				comp = _compare(key, cur->_content->first);
+				if (comp == 1 && cur->_left && cur->_left != _beginNode)
+					return _recursivecount(cur->_left, key);
+				else if (comp == 0 && cur->_right && cur->_right != _endNode)
+					return _recursivecount(cur->_right, key);
+			}
+			return 0;
 		}
 
-		_Node*		_rotateRight(_Node* node) { // Поднимаем правую находящуюся снизу ноду на узел выше
-			_Node*	leftTmp = node->left;
-			node->left = leftTmp->right;
-			leftTmp->right = node;
-			leftTmp->color = leftTmp->right->color;
-			leftTmp->right->color = red;
-			return leftTmp;
+		_Node*					_moveRedLeft(_Node* cur) {
+			_inverseColor(cur);
+			if (cur->_right && isRed(cur->_right->_left)) {
+				cur->_right = _rotateRight(cur->_right);
+				cur = _rotateLeft(cur);
+				_inverseColor(cur);
+			}
+			return cur;
 		}
 
-		_Node*		_balance(_Node* node) {
-			if (_isRed(node->right))
-				node = _rotateLeft(node);
-			if (_isRed(node->left) && _isRed(node->left->left))
-				node = _rotateRight(node);
-			if (_isRed(node->left) && _isRed(node->right))
-				_colorFlip(node);
-			return (node);
+		_Node*					_moveRedRight(_Node* cur) {
+			_inverseColor(cur);
+			if (cur->_left && isRed(cur->_left->_left)) {
+				cur = _rotateRight(cur);
+				_inverseColor(cur);
+			}
+			return cur;
 		}
 
-		_Node*		_colorFlip(_Node* currentNode) { // делаем инверсию цветов
-			currentNode->color = !currentNode->color;
-			currentNode->left->color = !currentNode->left->color;
-			currentNode->right->color = !currentNode->right->color;
-			return currentNode;
+		_Node*					_findLowLeft(_Node* cur) {
+			if (cur->_left)
+				return _findLowLeft(cur->_left);
+			return cur;
 		}
 
-		bool	_isRed(_Node* currentNode) {
-			if (currentNode == nullptr) // Проверяем сущуствует ли node
-				return (black); // возвращяем black, тк все lastNode, имееют черный цвет
-			return (currentNode->color == red);
+		void					_destroyNode(_Node* cur) {
+			_alloc.destroy(cur->_content);
+			_alloc.deallocate(cur->_content, 1);
+			_allocator_rebind.deallocate(cur, 1);
+			--_size;
 		}
 
-		void	_linkRightNode(_Node* parent, _Node* right) {
-			parent->right = right; // линкуем родителя с новой rightNode, они модет быть, либо nullptr
-			if (right) // если rightNode != nullptr
-				right->parent = parent;// линкуем значение parent с parentNode, если _rootNode, то _rootNode->parent == nullptr
-		}
+		_Node*					_eraseNode(_Node* cur, const key_type& k) {
+			int comp = _compare(k, cur->_content->first) | _compare(cur->_content->first, k);
 
-		void	_linkLeftNode(_Node* parent, _Node* left) {
-			parent->left = left; // линкуем родителя с новой leftNode, они модет быть, либо nullptr
-			if (left) // если leftNode != nullptr
-				left->parent = parent; // линкуем значение parent с parentNode, если _rootNode, то _rootNode->parent == nullptr
-		}
-
-		_Node*	_deleteNode(const key_type& k, _Node* currentNode) {
-			int comp = ((_compare(k, currentNode->content->first)) | (_compare(currentNode->content->first, k))); // 0 если они равны, в противном случае 1
-
-			if (comp == 1 &&  _compare(k, currentNode->content->first) == 1) {// compare == 1 && _comp(k, currentNode->content->first) == 1, значит мы идем по левой ветке
-				if (!_isRed(currentNode->left) && !_isRed(currentNode->left->left))
-					currentNode = _moveRedLeft(currentNode->left);
-				_linkLeftNode(currentNode, _deleteNode(k, currentNode->left));
-				return _balance(currentNode);
+			if (comp == 1 && _compare(k, cur->_content->first) == 1) {
+				if (!isRed(cur->_left) && !isRed(cur->_left->_left)) // проверяем на 2 красных узла друг за другом
+					cur = _moveRedLeft(cur);
+				_linkLeft(cur, _eraseNode(cur->_left, k));
 			}
 			else {
-				if (_isRed(currentNode->left)) { // если k > currentNode->content->first, то мы будем всегда поднимать краную левую ветку, для простоты итерирования
-					currentNode = _rotateRight(currentNode);
-					_linkRightNode(currentNode, _deleteNode(k, currentNode->right)); // линкуем currentNode(parent) со следуущей findNode, тем самым рекурсивно раскручивая связи
-					return _balance(currentNode);
+				if (isRed(cur->_left)) {
+					cur = _rotateRight(cur);
+					_linkRight(cur, _eraseNode(cur->_right, k));
+					return _treeBalance(cur);
 				}
-				if (comp == 0 && (currentNode == nullptr || currentNode == _endNode)) {
-					_Node*	tmpLink; // tmpLink хранит в себе связь с _endNode, которую до этого хранила удаленная currentNode
-					if (!currentNode->left && currentNode->right == _endNode)
-						tmpLink = currentNode->right;
+				if (comp == 0 && _compare(cur->_content->first, k) == 0 &&
+					(cur->_right == _endNode || cur->_right == nullptr)) {
+					_Node*	tmp;
+					if (!cur->_left && cur->_right == _endNode)
+						tmp = cur->_right;
 					else
-						tmpLink = currentNode->left;
-//					_destroyNode(currentNode); //  удаляем currentNode
-					return tmpLink; // возвращяем link на _endNode;
+						tmp = cur->_left;
+					_destroyNode(cur);
+					return tmp;
 				}
-				if (!_isRed(currentNode->right) && !_isRed(currentNode->right->left))
-					currentNode = _moveRedRight(currentNode);
-				if (_compare(k, currentNode->content->first) == 0) {
-					_Node* tmpLink;
-					_Node*	tmpCurrent = currentNode->right;
-					while (tmpCurrent->left)
-						tmpCurrent = tmpCurrent->left;
-					tmpLink = tmpCurrent;
-					return tmpLink;
-				}
-			}
-			return nullptr;
-		}
+				if (!isRed(cur->_right) && cur->_right && !isRed(cur->_right->_left))
+					cur = _moveRedRight(cur);
+				if (_compare(cur->_content->first, k) == 0) {
+					_Node*	min;
 
-		_Node*	_moveRedLeft(_Node* currentNode) {
-			_colorFlip(currentNode);
-			if (_isRed(currentNode->right->left)) {
-				currentNode->right = _rotateRight(currentNode->right);
-				currentNode = _rotateLeft(currentNode);
-				_colorFlip(currentNode);
+					min = _findLowLeft(cur->_right);
+					if (cur == _rootNode)
+						_rootNode = min;
+					if (min->_parent != cur) {
+						_linkLeft(min->_parent, min->_right); // min->_right == nullptr;
+						_linkRight(min, cur->_right); // cur->_ right
+					}
+					if (cur->_left == _beginNode) {
+						cur->_left->_parent = min;
+						min->_left = _beginNode;
+					} else
+						_linkLeft(min, cur->_left);
+					min->_parent = nullptr;
+					if (cur->_parent) {
+						if (cur->_parent->_left == cur)
+							_linkLeft(cur->_parent, min);
+						else
+							_linkRight(cur->_parent, min);
+					}
+					_destroyNode(cur);
+					cur = min;
+				} else
+					_linkRight(cur, _eraseNode(cur->_right, k));
 			}
-			return currentNode;
+			return _treeBalance(cur);
 		}
-
-		_Node*	_moveRedRight(_Node* currentNode) {
-			_colorFlip(currentNode);
-			if (_isRed(currentNode->left->left)) {
-				currentNode = _rotateRight(currentNode);
-				_colorFlip(currentNode);
-			}
-			return currentNode;
-		}
-
 	public:
 		/* iterator */
 		class iterator : public std::iterator<std::bidirectional_iterator_tag, value_type> {
@@ -277,46 +360,46 @@ namespace ft {
 
 			bool operator==(const const_iterator &it) const { return this->_it == it.getNode(); };
 			bool operator!=(const const_iterator &it) const { return this->_it != it.getNode(); };
-			reference operator*() const { return *(this->_it->content); }
-			pointer operator->() const { return this->_it->content; }
+			reference operator*() const { return *(this->_it->_content); }
+			pointer operator->() const { return this->_it->_content; }
 			_Node *getNode() const { return _it; }
 		private:
 			_Node *findLowNode(_Node *currentNode) {
-				if (currentNode->left)
-					return findLowNode(currentNode->left);
+				if (currentNode->_left)
+					return findLowNode(currentNode->_left);
 				return currentNode;
 			}
 
 			_Node *findHighNode(_Node *currentNode) {
-				if (currentNode->right)
-					return findHighNode(currentNode->right);
+				if (currentNode->_right)
+					return findHighNode(currentNode->_right);
 				return currentNode;
 			}
 
 			_Node *nextNode(_Node* currentNode) {
-				if (currentNode->right)
-					return findLowNode(currentNode->right);
-				else if (currentNode->parent && currentNode->parent->left == currentNode)
-					return currentNode->parent;
-				else if (currentNode->parent->right == currentNode)
-					currentNode = currentNode->parent;
+				if (currentNode->_right)
+					return findLowNode(currentNode->_right);
+				else if (currentNode->_parent && currentNode->_parent->_left == currentNode)
+					return currentNode->_parent;
+				else if (currentNode->_parent->_right == currentNode)
+					currentNode = currentNode->_parent;
 				_Node *tmp = currentNode;
-				while (tmp->parent->right == tmp)
-					if ((tmp = tmp->parent) == nullptr)
-						return currentNode->right;
-				return tmp->parent;
+				while (tmp->_parent->_right == tmp)
+					if ((tmp = tmp->_parent) == nullptr)
+						return currentNode->_right;
+				return tmp->_parent;
 			}
 
 			_Node *prevNode(_Node* currentNode) {
-				if (currentNode->left)
-					return findHighNode(currentNode->left);
-				else if (currentNode->parent && currentNode->parent->right == currentNode)
-					return currentNode->parent;
+				if (currentNode->_left)
+					return findHighNode(currentNode->_left);
+				else if (currentNode->_parent && currentNode->_parent->_right == currentNode)
+					return currentNode->_parent;
 				_Node *tmp = currentNode;
-				while (tmp->parent->left == tmp)
-					if ((tmp = tmp->parent) == nullptr)
-						return currentNode->left;
-				return tmp->parent;
+				while (tmp->_parent->_left == tmp)
+					if ((tmp = tmp->_parent) == nullptr)
+						return currentNode->_left;
+				return tmp->_parent;
 			}
 		};
 
@@ -347,43 +430,43 @@ namespace ft {
 			bool operator!=(const const_iterator &it) const { return this->_it != it._it; };
 			bool operator==(const iterator &it) const { return this->_it == it.getNode(); };
 			bool operator!=(const iterator &it) const { return this->_it != it.getNode(); };
-			const_reference operator*() const { return *(this->_it->content); };
-			const_pointer operator->() const { return this->_it->content; }
+			const_reference operator*() const { return *(this->_it->_content); };
+			const_pointer operator->() const { return this->_it->_content; }
 			_Node *getNode() const { return _it; }
 		private:
 			_Node *findLowNode(_Node *currentNode) {
-				if (currentNode->left)
-					return findLowNode(currentNode->left);
+				if (currentNode->_left)
+					return findLowNode(currentNode->_left);
 				return currentNode;
 			}
 			_Node *findHighNode(_Node *currentNode) {
-				if (currentNode->right)
-					return findHighNode(currentNode->right);
+				if (currentNode->_right)
+					return findHighNode(currentNode->_right);
 				return currentNode;
 			}
 			_Node *nextNode(_Node* currentNode) {
-				if (currentNode->right)
-					return findLowNode(currentNode->right);
-				else if (currentNode->parent && currentNode->parent->left == currentNode)
-					return currentNode->parent;
-				else if (currentNode->parent->right == currentNode)
-					currentNode = currentNode->parent;
+				if (currentNode->_right)
+					return findLowNode(currentNode->_right);
+				else if (currentNode->_parent && currentNode->_parent->_left == currentNode)
+					return currentNode->_parent;
+				else if (currentNode->_parent->_right == currentNode)
+					currentNode = currentNode->_parent;
 				_Node *tmp = currentNode;
-				while (tmp->parent->right == tmp)
-					if ((tmp = tmp->parent) == nullptr)
-						return currentNode->right;
-				return tmp->parent;
+				while (tmp->_parent->_right == tmp)
+					if ((tmp = tmp->_parent) == nullptr)
+						return currentNode->_right;
+				return tmp->_parent;
 			}
 			_Node *prevNode(_Node* currentNode) {
-				if (currentNode->left)
-					return findHighNode(currentNode->left);
-				else if (currentNode->parent && currentNode->parent->right == currentNode)
-					return currentNode->parent;
+				if (currentNode->_left)
+					return findHighNode(currentNode->_left);
+				else if (currentNode->_parent && currentNode->_parent->_right == currentNode)
+					return currentNode->_parent;
 				_Node *tmp = currentNode;
-				while (tmp->parent->left == tmp)
-					if ((tmp = tmp->parent) == nullptr)
-						return currentNode->left;
-				return tmp->parent;
+				while (tmp->_parent->_left == tmp)
+					if ((tmp = tmp->_parent) == nullptr)
+						return currentNode->_left;
+				return tmp->_parent;
 			}
 		};
 
@@ -412,43 +495,43 @@ namespace ft {
 			bool operator!=(const reverse_iterator &it) const { return this->_it != it._it; };
 			bool operator==(const const_reverse_iterator &it) const { return this->_it == it.getNode(); };
 			bool operator!=(const const_reverse_iterator &it) const { return this->_it != it.getNode(); };
-			value_type & operator*() const { return *(this->_it->content); };
-			value_type * operator->() const { return this->_it->content; }
+			value_type & operator*() const { return *(this->_it->_content); };
+			value_type * operator->() const { return this->_it->_content; }
 			_Node *getNode() const { return _it; }
 		private:
 			_Node *findLowNode(_Node *currentNode) {
-				if (currentNode->left)
-					return findLowNode(currentNode->left);
+				if (currentNode->_left)
+					return findLowNode(currentNode->_left);
 				return currentNode;
 			}
 			_Node *findHighNode(_Node *currentNode) {
-				if (currentNode->right)
-					return findHighNode(currentNode->right);
+				if (currentNode->_right)
+					return findHighNode(currentNode->_right);
 				return currentNode;
 			}
 			_Node *nextNode(_Node* currentNode) {
-				if (currentNode->right)
-					return findLowNode(currentNode->right);
-				else if (currentNode->parent && currentNode->parent->left == currentNode)
-					return currentNode->parent;
-				else if (currentNode->parent->right == currentNode)
-					currentNode = currentNode->parent;
+				if (currentNode->_right)
+					return findLowNode(currentNode->_right);
+				else if (currentNode->_parent && currentNode->_parent->_left == currentNode)
+					return currentNode->_parent;
+				else if (currentNode->_parent->_right == currentNode)
+					currentNode = currentNode->_parent;
 				_Node *tmp = currentNode;
-				while (tmp->parent->right == tmp)
-					if ((tmp = tmp->parent) == nullptr)
-						return currentNode->right;
-				return tmp->parent;
+				while (tmp->_parent->_right == tmp)
+					if ((tmp = tmp->_parent) == nullptr)
+						return currentNode->_right;
+				return tmp->_parent;
 			}
 			_Node *prevNode(_Node* currentNode) {
-				if (currentNode->left)
-					return findHighNode(currentNode->left);
-				else if (currentNode->parent && currentNode->parent->right == currentNode)
-					return currentNode->parent;
+				if (currentNode->_left)
+					return findHighNode(currentNode->_left);
+				else if (currentNode->_parent && currentNode->_parent->_right == currentNode)
+					return currentNode->_parent;
 				_Node *tmp = currentNode;
-				while (tmp->parent->left == tmp)
-					if ((tmp = tmp->parent) == nullptr)
-						return currentNode->left;
-				return tmp->parent;
+				while (tmp->_parent->_left == tmp)
+					if ((tmp = tmp->_parent) == nullptr)
+						return currentNode->_left;
+				return tmp->_parent;
 			}
 		};
 
@@ -479,65 +562,102 @@ namespace ft {
 			bool operator!=(const const_reverse_iterator &it) const { return this->_it != it._it; };
 			bool operator==(const reverse_iterator &it) const { return this->_it == it.getNode(); };
 			bool operator!=(const reverse_iterator &it) const { return this->_it != it.getNode(); };
-			reference operator*() const { return *(this->_it->content); }
-			pointer operator->() const { return this->it->content; }
+			reference operator*() const { return *(this->_it->_content); }
+			pointer operator->() const { return this->it->_content; }
 			_Node *getNode() const { return _it; }
 		private:
 			_Node *findLowNode(_Node *currentNode) {
-				if (currentNode->left)
-					return findLowNode(currentNode->left);
+				if (currentNode->_left)
+					return findLowNode(currentNode->_left);
 				return currentNode;
 			}
 			_Node *findHighNode(_Node *currentNode) {
-				if (currentNode->right)
-					return findHighNode(currentNode->right);
+				if (currentNode->_right)
+					return findHighNode(currentNode->_right);
 				return currentNode;
 			}
 			_Node *nextNode(_Node* currentNode) {
-				if (currentNode->right)
-					return findLowNode(currentNode->right);
-				else if (currentNode->parent && currentNode->parent->left == currentNode)
-					return currentNode->parent;
-				else if (currentNode->parent->right == currentNode)
-					currentNode = currentNode->parent;
+				if (currentNode->_right)
+					return findLowNode(currentNode->_right);
+				else if (currentNode->_parent && currentNode->_parent->_left == currentNode)
+					return currentNode->_parent;
+				else if (currentNode->_parent->_right == currentNode)
+					currentNode = currentNode->_parent;
 				_Node *tmp = currentNode;
-				while (tmp->parent->right == tmp)
-					if ((tmp = tmp->parent) == nullptr)
-						return currentNode->right;
-				return tmp->parent;
+				while (tmp->_parent->_right == tmp)
+					if ((tmp = tmp->_parent) == nullptr)
+						return currentNode->_right;
+				return tmp->_parent;
 			}
 			_Node *prevNode(_Node* currentNode) {
-				if (currentNode->left)
-					return findHighNode(currentNode->left);
-				else if (currentNode->parent && currentNode->parent->right == currentNode)
-					return currentNode->parent;
+				if (currentNode->_left)
+					return findHighNode(currentNode->_left);
+				else if (currentNode->_parent && currentNode->_parent->_right == currentNode)
+					return currentNode->_parent;
 				_Node *tmp = currentNode;
-				while (tmp->parent->left == tmp)
-					if ((tmp = tmp->parent) == nullptr)
-						return currentNode->left;
-				return tmp->parent;
+				while (tmp->_parent->_left == tmp)
+					if ((tmp = tmp->_parent) == nullptr)
+						return currentNode->_left;
+				return tmp->_parent;
 			}
 		};
 
 		/* Constructor */
 		/* empty */
 		explicit map (const key_compare& comp = key_compare(),
-					  const allocator_type& alloc = allocator_type()): _alloc(alloc), _size(0), _compare(comp) {
-			_createBeginEndNode();
+					  const allocator_type& alloc = allocator_type()): _alloc(alloc), _size(0), _compare(comp), _rootNode(nullptr) {
+			_beginNode = _allocator_rebind.allocate(1);
+			_beginNode->_content = nullptr;
+			_beginNode->_left = nullptr;
+			_beginNode->_right = nullptr;
+			_beginNode->_parent = nullptr;
+			_beginNode->_color = black;
+
+			_endNode = _allocator_rebind.allocate(1);
+			_endNode->_content = nullptr;
+			_endNode->_left = nullptr;
+			_endNode->_right = nullptr;
+			_endNode->_parent = nullptr;
+			_endNode->_color = black;
 		}
 		/* range */
 		template <class InputIterator>
 		map (InputIterator first, InputIterator last,
 			 const key_compare& comp = key_compare(),
 			 const allocator_type& alloc = allocator_type(),
-			 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0): _alloc(alloc), _size(0), _compare(comp) {
-				_createBeginEndNode();
-			 	insert(first, last);
+			 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0): _alloc(alloc), _size(0), _compare(comp), _rootNode(nullptr) {
+				_beginNode = _allocator_rebind.allocate(1);
+				_beginNode->_content = nullptr;
+				_beginNode->_left = nullptr;
+				_beginNode->_right = nullptr;
+				_beginNode->_parent = nullptr;
+				_beginNode->_color = black;
+
+				_endNode = _allocator_rebind.allocate(1);
+				_endNode->_content = nullptr;
+				_endNode->_left = nullptr;
+				_endNode->_right = nullptr;
+				_endNode->_parent = nullptr;
+				_endNode->_color = black;
+
+				insert(first, last);
 			 }
 
 		/* copy */
-		map (const map& x): _alloc(x._alloc), _size(x._size), _compare(x._compare) {
-			_createBeginEndNode();
+		map (const map& x): _alloc(x._alloc), _size(0), _allocator_rebind(x._allocator_rebind) {
+			_beginNode = _allocator_rebind.allocate(1);
+			_beginNode->_content = nullptr;
+			_beginNode->_left = nullptr;
+			_beginNode->_right = nullptr;
+			_beginNode->_parent = nullptr;
+			_beginNode->_color = black;
+
+			_endNode = _allocator_rebind.allocate(1);
+			_endNode->_content = nullptr;
+			_endNode->_left = nullptr;
+			_endNode->_right = nullptr;
+			_endNode->_parent = nullptr;
+			_endNode->_color = black;
 			*this = x;
 		}
 
@@ -557,14 +677,14 @@ namespace ft {
 		}
 
 		/* ITERATORS */
-		iterator		begin() { return (_size != 0) ? iterator(_beginNode->parent) : iterator(_endNode); };
-		const_iterator 	begin() const { return (_size != 0) ? const_iterator(_beginNode->parent) : const_iterator(_endNode); };
+		iterator		begin() { return (_size != 0) ? iterator(_beginNode->_parent) : iterator(_endNode); };
+		const_iterator 	begin() const { return (_size != 0) ? const_iterator(_beginNode->_parent) : const_iterator(_endNode); };
 		iterator		end() { return iterator(_endNode); };
 		const_iterator	end() const { return const_iterator(_endNode); };
 
 		/* Reverse Iterators */
-		reverse_iterator 		rbegin() { return (_size != 0) ? reverse_iterator(_endNode->parent) : reverse_iterator(_beginNode); };
-		const_reverse_iterator	rbegin() const { return (_size != 0) ? const_reverse_iterator(_endNode->parent) : const_reverse_iterator(_beginNode); };
+		reverse_iterator 		rbegin() { return (_size != 0) ? reverse_iterator(_endNode->_parent) : reverse_iterator(_beginNode); };
+		const_reverse_iterator	rbegin() const { return (_size != 0) ? const_reverse_iterator(_endNode->_parent) : const_reverse_iterator(_beginNode); };
 		reverse_iterator 		rend() { return reverse_iterator(_beginNode); };
 		const_reverse_iterator	rend() const { return const_reverse_iterator(_beginNode); };
 
@@ -595,25 +715,22 @@ namespace ft {
 
 		/* Mpdifiers */
 		/* single element */
-		std::pair<iterator,bool> insert (const_reference val) {
-			if (_size == 0) {
-				_insertRootNode(black, val, nullptr, 1);
-				return std::make_pair(iterator(_rootNode), true); // Добавляет iterator на root node, тк it ~= pair;
-			}
-			return _otherInsertCases(_rootNode, val);
+		std::pair<iterator,bool> insert (const value_type& val) {
+			if (_size == 0)
+				return _createRoot(black, nullptr, val, 1);
+			return _recursiveInsert(_rootNode, val);
 		}
+
 		iterator insert (iterator position, const_reference val) {
-			(void)position;
+			static_cast<void>(position);
 			return insert(val).first;
 		}
 
 		template <class InputIterator>
 		void insert (InputIterator first, InputIterator last,
 					 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
-			while(first != last) {
+			for (; first != last; ++first)
 				insert(*first);
-				first++;
-			}
 		}
 
 		void erase (iterator position) {
@@ -623,15 +740,13 @@ namespace ft {
 		size_type erase(const key_type& k) {
 			if (_size == 0 || find(k) == end())
 				return 0;
-			_deleteNode(k, _rootNode);
+			_eraseNode(_rootNode, k);
 			return 1;
 		}
 
 		void erase (iterator first, iterator last) {
-			while (first != last) {
-				erase(first->first);
-				first++;
-			}
+			while (first != last)
+				erase(first++);
 		}
 
 		void swap (map& x) {
@@ -653,7 +768,7 @@ namespace ft {
 		}
 
 		void clear() {
-			while (_size != 0)
+			while (size() != 0)
 				erase(begin());
 		}
 
@@ -663,38 +778,26 @@ namespace ft {
 
 		/* Operations */
 		iterator find (const key_type& k) {
-			for (iterator it = begin(); it != end(); ++it) {
-				if (it->first == k)
-					return it;
-			}
-			return end();
+			return _recursivefind(_rootNode, k);
 		}
 		const_iterator find (const key_type& k) const {
-			for (const_iterator it = begin(); it != end(); ++it) {
-				if (it->first == k)
-					return it;
-			}
-			return end();
+			return _recursivefindconst(_rootNode, k);
 		}
 
 		size_type count (const key_type& k) const {
-			for (const_iterator it = begin(); it != end(); ++it) {
-				if (it->first == k)
-					return 1;
-			}
-			return 0;
+			return _recursivecount(_rootNode, k);
 		}
 
 		iterator lower_bound (const key_type& k) {
 			iterator it = begin();
-			for (; it != end() && !_compare(k, it->first); ++it)
-				NULL;
+			while (it != end() && _compare(it->first, k))
+				++it;
 			return it;
 		}
 		const_iterator lower_bound (const key_type& k) const {
-			const_iterator it = begin();
-			for (; it != end() && !_compare(k, it->first); ++it)
-				NULL;
+			iterator it = begin();
+			while (it != end() && _compare(it->first, k))
+				++it;
 			return it;
 		}
 

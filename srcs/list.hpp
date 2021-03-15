@@ -191,8 +191,10 @@ namespace ft {
 					 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
 			if (!this->empty())
 				this->clear();
-			for (;first != last; ++first)
-				this->push_back(*first);
+			while (first != last) {
+				push_back(*first);
+				first++;
+			}
 		}
 
 		void assign (size_type n, const value_type& val) {
@@ -222,7 +224,7 @@ namespace ft {
 		}
 
 		void pop_back() {
-			_List* tmp = this->_end->prev;
+			_List* tmp = this->_end->next;
 			this->_linkNode(tmp->prev, tmp->next);
 			this->_alloc.destroy(tmp->content);
 			this->_alloc.deallocate(tmp->content, 1);
@@ -282,7 +284,7 @@ namespace ft {
 		}
 
 		void clear() {
-			for (; this->_size;)
+			while (_size)
 				pop_back();
 		}
 
@@ -390,13 +392,18 @@ namespace ft {
 		}
 
 		void reverse() {
-            _List* current = this->_end->next;
-            _List* tmp = current->next;
-            current->next = current->prev;
-            current->prev = tmp;
-            if (current == this->_end)
-                return ;
-            reverse(current->prev);
+			_List* currentNode = begin().getElement();
+			_List* nextNode;
+			_List* tmp;
+			for (size_type i = 0; i <= _size; ++i) {
+				nextNode = currentNode->next;
+
+				tmp = currentNode->prev;
+				currentNode->prev = currentNode->next;
+				currentNode->next = tmp;
+
+				currentNode = nextNode;
+			}
 		}
 
 		class iterator: public std::iterator<std::random_access_iterator_tag, T> {
@@ -423,8 +430,10 @@ namespace ft {
 				return tmp;
 			}
 
-			bool        operator==(const iterator& it) { return (this->_it->content == it.getElement()->content); }
-			bool        operator!=(const iterator& it) { return (this->_it->content != it.getElement()->content); }
+			bool        operator==(const iterator& it) const { return (this->_it->content == it.getElement()->content); }
+			bool        operator!=(const iterator& it) const { return (this->_it->content != it.getElement()->content); }
+			bool        operator==(const const_iterator& it) const { return (this->_it->content == it.getElement()->content); }
+			bool        operator!=(const const_iterator& it) const { return (this->_it->content != it.getElement()->content); }
 
 			T&   operator*() { return *(this->_it->content); }
 			T*   operator->() {return this->_it->content; }
@@ -464,8 +473,8 @@ namespace ft {
 
             bool        operator==(const const_iterator& it) const { return (this->_it->content == it.getElement()->content); }
             bool        operator!=(const const_iterator& it) const { return (this->_it->content != it.getElement()->content); }
-			bool        operator==(const iterator& it) { return (this->_it->content == it.getElement()->content); }
-			bool        operator!=(const iterator& it) { return (this->_it->content != it.getElement()->content); }
+			bool        operator==(const iterator& it) const { return (this->_it->content == it.getElement()->content); }
+			bool        operator!=(const iterator& it) const { return (this->_it->content != it.getElement()->content); }
 
             T&   operator*() { return *(this->_it->content); }
             T*   operator->() {return this->_it->content; }
@@ -484,8 +493,8 @@ namespace ft {
             }
             ~reverse_iterator() {}
 
-            reverse_iterator& operator++() { this->_it = this->_it->next; return *this; }
-            reverse_iterator& operator--() { this->_it = this->_it->prev; return *this; }
+            reverse_iterator& operator++() { this->_it = this->_it->prev; return *this; }
+            reverse_iterator& operator--() { this->_it = this->_it->next; return *this; }
 
             reverse_iterator operator++(int) {
                 reverse_iterator tmp(_it);
@@ -500,6 +509,8 @@ namespace ft {
 
             bool        operator==(const reverse_iterator& it) const { return (_it->content == it.getElement()->content); }
             bool        operator!=(const reverse_iterator& it) const { return (_it->content != it.getElement()->content); }
+			bool        operator==(const const_reverse_iterator& it) const { return (this->_it->content == it.getElement()->content); }
+			bool        operator!=(const const_reverse_iterator& it) const { return (this->_it->content != it.getElement()->content); }
 
             T&   operator*() { return *(this->_it->content); }
             T*   operator->() {return this->_it->content; }
@@ -537,8 +548,10 @@ namespace ft {
                 return tmp;
             }
 
-            bool        operator==(const const_reverse_iterator& it) { return (this->_it->content == it.getElement()->content); }
-            bool        operator!=(const const_reverse_iterator& it) { return (this->_it->content != it.getElement()->content); }
+            bool        operator==(const const_reverse_iterator& it) const { return (this->_it->content == it.getElement()->content); }
+            bool        operator!=(const const_reverse_iterator& it) const { return (this->_it->content != it.getElement()->content); }
+			bool        operator==(const reverse_iterator& it) const { return (_it->content == it.getElement()->content); }
+			bool        operator!=(const reverse_iterator& it) const { return (_it->content != it.getElement()->content); }
 
             T&   operator*() { return *(this->_it->content); }
             T*   operator->() {return this->_it->content; }
@@ -547,46 +560,58 @@ namespace ft {
             _List*  _it;
 		};
 	};
-	template <class T, class Alloc> bool operator==
-			(const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) {
-		typename ft::list<T, Alloc>::const_iterator l_it = lhs.begin();
-		typename ft::list<T, Alloc>::const_iterator l_ite = lhs.end();
-		typename ft::list<T, Alloc>::const_iterator r_it = rhs.begin();
+	template <class P, class AllocSwap>
+	void swap (ft::list<P,AllocSwap>& x, ft::list<P,AllocSwap>& y) {
+		x.swap(y);
+	}
 
-		if (lhs.size() != rhs.size()) return false;
+	template <class T, class Alloc>
+	bool operator== (const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) {
+		if (lhs.size() != rhs.size()) {
+			return false;
+		}
+		typename ft::list<T, Alloc>::const_iterator lit;
+		typename ft::list<T, Alloc>::const_iterator lite = lhs.end();
+		typename ft::list<T, Alloc>::const_iterator rit = rhs.begin();
+		typename ft::list<T, Alloc>::const_iterator rite = rhs.end();
 
-		for (; l_it != l_ite; ++l_it, ++r_it) if (*l_it != *r_it) return false;
-
+		for (lit = lhs.begin(); lit != lite; ++lit) {
+			if (rit == rite || *lit != *rit)
+				return false;
+			++rit;
+		}
 		return true;
-	};
-
-	template <class T, class Alloc> bool operator!=
-			(const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) { return !(lhs == rhs); };
-
-	template <class T, class Alloc> bool operator<
-			(const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) {
-		typename ft::list<T, Alloc>::const_iterator l_it = lhs.begin();
-		typename ft::list<T, Alloc>::const_iterator l_ite = lhs.end();
-		typename ft::list<T, Alloc>::const_iterator r_it = rhs.begin();
-		typename ft::list<T, Alloc>::const_iterator r_ite = rhs.end();
-
-		for (; l_it != l_ite && r_it != r_ite; ++l_it, ++r_it)
-			if (*l_it < *r_it) return true;
-
-		if (l_it != l_ite) return false;
-
-		return (r_it != r_ite);
-
-	};
+	}
 
 	template <class T, class Alloc>
-	bool operator<=(const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) { return !(rhs < lhs); };
+	bool operator!= (const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) { return !(lhs == rhs); }
 
 	template <class T, class Alloc>
-	bool operator>(const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) { return (rhs < lhs); };
+	bool operator<  (const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) {
+		if (lhs.size() < rhs.size()) {
+			return true;
+		}
+		typename ft::list<T, Alloc>::const_iterator lit;
+		typename ft::list<T, Alloc>::const_iterator lite = lhs.end();
+		typename ft::list<T, Alloc>::const_iterator rit = rhs.begin();
+		typename ft::list<T, Alloc>::const_iterator rite = rhs.end();
+
+		for (lit = lhs.begin(); lit != lite; ++lit) {
+			if (rit == rite)
+				return false;
+			if (*lit < *rit)
+				return true;
+			++rit;
+		}
+		return false;
+	}
 
 	template <class T, class Alloc>
-	bool operator>=(const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) { return !(lhs < rhs); };
+	bool operator<= (const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) { return !(rhs < lhs); }
 
-	template <class T, class Alloc> void swap (ft::list<T,Alloc>& x, ft::list<T,Alloc>& y) { x.swap(y); };
+	template <class T, class Alloc>
+	bool operator>  (const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) { return rhs < lhs; }
+
+	template <class T, class Alloc>
+	bool operator>= (const ft::list<T,Alloc>& lhs, const ft::list<T,Alloc>& rhs) { return !(lhs < rhs); }
 }
