@@ -34,16 +34,13 @@ namespace ft {
         typedef typename allocator_type::template rebind<_List>::other allocator_rebind_type;
 		allocator_rebind_type _allocator_rebind;
 
-		static bool compare(const value_type& first, const value_type& second) { return first < second; }
-		static bool predict(const value_type& first, const value_type& second) { return first == second; }
+		struct _less {
+			bool operator()(const value_type& first, const value_type& second) { return first < second; }
+		};
 
-		void    _createList(void) {
-			this->_end = this->_allocator_rebind.allocate(1);
-			this->_end->content = this->_alloc.allocate(1);
-			this->_end->prev = this->_end;
-			this->_end->next = this->_end;
-			this->_size = 0;
-		}
+		struct _equal {
+			bool operator()(const value_type& first, const value_type& second) { return first == second; }
+		};
 
 		_List*   _createNode(const value_type& val) {
 			_List* tmp = this->_allocator_rebind.allocate(1);
@@ -51,6 +48,15 @@ namespace ft {
 			this->_alloc.construct(tmp->content, val);
 			this->_size++;
 			return tmp;
+		}
+
+		void	_destroyNode(_List* cur) {
+			_alloc.destroy(cur->content);
+		}
+
+		void	_deallocateNode(_List* cur) {
+			_alloc.deallocate(cur->content, 1);
+			_allocator_rebind.deallocate(cur, 1);
 		}
 
 		void   _insertList(_List* current, _List* prevNode, _List* nextNode) {
@@ -117,294 +123,6 @@ namespace ft {
 		class reverse_iterator;
 		class const_reverse_iterator;
 
-		//Constructors
-		explicit list (const allocator_type& alloc = allocator_type()): _size(0), _alloc(alloc), _end(0) {
-			_createList();
-		}
-
-		explicit list (size_type n, const value_type& val = value_type(),
-		               const allocator_type& alloc = allocator_type()) {
-			_createList();
-		    for (; n != 0; --n)
-				push_back(val);
-		}
-
-		template <class InputIterator>
-		list (InputIterator first, InputIterator last, const allocator_type& alloc = allocator_type(),
-			  typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
-			_createList();
-			for (; first != last; ++first)
-				push_back(*first);
-		}
-
-		list (const list& x): _alloc(x._alloc), _end(0) {
-		    _createList();
-		    *this = x;
-		}
-
-		~list() {
-//		    clear();
-//			this->_size = 0;
-//            this->_alloc.deallocate(_end->content, 1);
-//            this->_allocator_rebind.deallocate(_end, 1);
-		}
-
-		list& operator=(const list& x) {
-		    this->_size = x._size;
-		    this->_alloc = x._alloc;
-		    this->_end = x._end;
-		    this->_allocator_rebind = x._allocator_rebind;
-		    return *this;
-		}
-
-		/* Iterators */
-		iterator begin() { return iterator(this->_end->next); }
-		const_iterator begin() const { return const_iterator(this->_end->next); }
-
-		iterator end() { return iterator(this->_end); }
-		const_iterator end() const { return const_iterator(this->_end); }
-
-		reverse_iterator rbegin() { return reverse_iterator(this->_end); }
-		const_reverse_iterator rbegin() const { return const_reverse_iterator(this->_end); }
-
-		reverse_iterator rend() { return reverse_iterator(this->_end->next); }
-		const_reverse_iterator rend() const { return const_reverse_iterator(this->_end->next); }
-
-		/* Capacity */
-		bool empty() const { return (this->_size == 0); }
-
-		size_type size() const { return this->_size; }
-
-		size_type max_size() const {
-			if (sizeof(value_type) == 1)
-				return ((size_t)(-1) / sizeof(value_type) / 2);
-			else
-				return ((size_t)(-1) / sizeof(value_type));
-		}
-
-		/* Element access */
-		reference front() { return *(_end->next->content); }
-		const_reference front() const { return *(_end->next->content); }
-
-		reference back() { return *(_end->prev->content); }
-		const_reference back() const { return *(_end->prev->content); }
-
-		/* Modifiers */
-		template <class InputIterator>
-		void assign (InputIterator first, InputIterator last,
-					 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
-			clear();
-			insert(begin(), first, last);
-		}
-
-		void assign (size_type n, const value_type& val) {
-			clear();
-			for (size_type i = 0; i < n; ++i)
-				push_back(val);
-		}
-
-		void push_front(const value_type& val) {
-			_List* current = this->_createNode(val);
-			_insertList(current, this->_end, this->_end->next);
-		}
-
-		void pop_front() {
-			_List* tmp = _end->next;
-			_linkNode(tmp->prev, tmp->next);
-			_alloc.destroy(tmp->content);
-			_alloc.deallocate(tmp->content, 1);
-			_allocator_rebind.deallocate(tmp, 1);
-			_size--;
-		}
-
-		void push_back (const value_type& val) {
-			_List* current = _createNode(val);
-			_insertList(current, _end->prev, _end);
-		}
-
-		void pop_back() {
-			_List* tmp = _end->prev;
-			_linkNode(tmp->prev, tmp->next);
-			_alloc.destroy(tmp->content);
-			_alloc.deallocate(tmp->content, 1);
-			_allocator_rebind.deallocate(tmp, 1);
-			_size--;
-		}
-
-		iterator insert (iterator position, const value_type& val) {
-			_List* current = _createNode(val);
-			_List* it_pos = position.getElement();
-			_insertList(current, it_pos->prev, it_pos);
-			return iterator(current);
-		}
-
-		void insert (iterator position, size_type n, const value_type& val) {
-			for (; n != 0; n--)
-				insert(position, val);
-		}
-
-		template <class InputIterator>
-		void insert (iterator position, InputIterator first, InputIterator last,
-					 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
-			for (; first != last; ++first)
-				insert(position, *first);
-		}
-
-		iterator erase (iterator position) {
-			_List* it_pos = position.getElement();
-			_List* save_node = it_pos->next;
-			_linkNode(it_pos->prev, it_pos->next);
-			_alloc.destroy(it_pos->content);
-			_alloc.deallocate(it_pos->content, 1);
-			_allocator_rebind.deallocate(it_pos, 1);
-			_size--;
-			return iterator(save_node);
-		}
-		iterator erase (iterator first, iterator last) {
-			while (first != last)
-				erase(first++);
-			return last;
-		}
-
-		void swap (list& x) {
-            _List* tmp = _end;
-            _end = x._end;
-            x._end = tmp;
-            size_type size = _size;
-            _size = x._size;
-            x._size = size;
-		}
-
-		void resize (size_type n, value_type val = value_type()) {
-			while (n < _size)
-				erase(iterator(_end->prev));
-			while (_size < n)
-				push_back(val);
-		}
-
-		void clear() {
-			while (_size != 0)
-				pop_back();
-		}
-
-		/* Operations */
-		void splice (iterator position, list& x) {
-			splice(position, x, x.begin(), x.end());
-		}
-
-		void splice (iterator position, list& x, iterator i) {
-			_List*	curr_node = position.getElement();
-			_List*	from_pos = i.getElement();
-			_linkNode(from_pos->prev, from_pos->next);
-			_insertList(from_pos, curr_node->prev, curr_node);
-			_size += 1;
-			x._size -= 1;
-
-		}
-
-		void splice (iterator position, list& x, iterator first, iterator last) {
-			_List*	insert_position = position.getElement();
-			_List*	begin_x_node = first.getElement();
-			_List*	end_x_node = last.getElement();
-			_linkNode(insert_position->prev, begin_x_node);
-			_linkNode(end_x_node->prev, insert_position);
-			_size += x._size;
-			x._size -= x._size;
-		}
-
-		void remove (const value_type& val) {
-		    for (iterator it = begin(); it != end(); ++it) {
-		        if (*it == val)
-		            erase(it);
-		    }
-		}
-
-		template <class Predicate>
-		void remove_if (Predicate pred) {
-		    for (iterator it = begin(); it != end(); ++it) {
-		        if (pred(*it))
-		            erase(it);
-		    }
-		}
-
-		void unique() {
-		    sort();
-		    iterator it = begin();
-		    iterator next = ++begin();
-		    while (next != end()) {
-		        if (*it == *next)
-		            next = erase(next);
-		        else {
-		            ++it;
-		            ++next;
-		        }
-		    }
-		}
-
-		template <class BinaryPredicate>
-		void unique (BinaryPredicate binary_pred) {
-			sort();
-            iterator it = begin();
-            iterator next = ++begin();
-            while (next != end()) {
-                if (binary_pred(*it, *next))
-                    next = erase(next);
-                else {
-                    ++it;
-                    ++next;
-                }
-            }
-        }
-
-		void merge (list& x) {
-		    iterator itx_begin = begin();
-		    iterator itx_end = end();
-		    iterator it_begin = begin();
-		    iterator it_end = end();
-		    for (; itx_begin != itx_end; ++itx_begin) {
-		        if (it_begin != it_end && *itx_begin != *it_begin)
-		            ++it_begin;
-		        splice(it_begin, x, itx_begin);
-		    }
-		}
-
-		template <class Compare>
-		void merge (list& x, Compare comp) {
-            iterator itx_begin = begin();
-            iterator itx_end = end();
-            iterator it_begin = begin();
-            iterator it_end = end();
-            for (; itx_begin != itx_end; ++itx_begin) {
-                while (it_begin != it_end && !comp(*itx_begin, *it_begin))
-                    ++it_begin;
-                splice(it_begin, x, itx_begin);
-            }
-		}
-
-		void sort() {
-			sort(compare);
-		}
-
-		template <class Compare>
-		void sort (Compare comp) {
-			_mergeSort(&(_end->next), comp);
-		}
-
-		void reverse() {
-			_List* currentNode = begin().getElement();
-			_List* nextNode;
-			_List* tmp;
-			for (size_type i = 0; i <= _size; ++i) {
-				nextNode = currentNode->next;
-
-				tmp = currentNode->prev;
-				currentNode->prev = currentNode->next;
-				currentNode->next = tmp;
-
-				currentNode = nextNode;
-			}
-		}
-
 		class iterator: public std::iterator<std::bidirectional_iterator_tag, value_type> {
 		private:
 			_List* _it;
@@ -425,11 +143,11 @@ namespace ft {
 				this->_it = _it->prev;
 				return tmp;
 			};
-			bool operator==(const iterator &it) const { return this->_it->content == it._it->content; };
-			bool operator!=(const iterator &it) const { return this->_it->content != it._it->content; };
-
+			bool operator==(const iterator &it) const { return this->_it->content == it.getElement()->content; };
+			bool operator!=(const iterator &it) const { return this->_it->content != it.getElement()->content; };
 			bool operator==(const const_iterator &it) const { return this->_it->content == it.getElement()->content; };
 			bool operator!=(const const_iterator &it) const { return this->_it->content != it.getElement()->content; };
+
 			T & operator*() const { return *(this->_it->content); }
 			T * operator->() const { return this->it->content; }
 
@@ -459,11 +177,11 @@ namespace ft {
 				this->_it = _it->prev;
 				return tmp;
 			};
-			bool operator==(const const_iterator &it) const { return this->_it->content == it._it->content; };
-			bool operator!=(const const_iterator &it) const { return this->_it->content != it._it->content; };
-
+			bool operator==(const const_iterator &it) const { return this->_it->content == it.getElement()->content; };
+			bool operator!=(const const_iterator &it) const { return this->_it->content != it.getElement()->content; };
 			bool operator==(const iterator &it) const { return this->_it->content == it.getElement()->content; };
 			bool operator!=(const iterator &it) const { return this->_it->content != it.getElement()->content; };
+
 			T & operator*() const { return *(this->_it->content); };
 			T * operator->() const { return this->it->content; }
 
@@ -492,8 +210,8 @@ namespace ft {
 				return tmp;
 			};
 
-			bool operator==(const reverse_iterator &it) const { return this->_it->content == it._it->content; };
-			bool operator!=(const reverse_iterator &it) const { return this->_it->content != it._it->content; };
+			bool operator==(const reverse_iterator &it) const { return this->_it->content == it.getElement()->content; };
+			bool operator!=(const reverse_iterator &it) const { return this->_it->content != it.getElement()->content; };
 
 			bool operator==(const const_reverse_iterator &it) const { return this->_it->content == it.getElement()->content; };
 			bool operator!=(const const_reverse_iterator &it) const { return this->_it->content != it.getElement()->content; };
@@ -527,8 +245,8 @@ namespace ft {
 				return tmp;
 			};
 
-			bool operator==(const const_reverse_iterator &it) const { return this->_it->content == it._it->content; };
-			bool operator!=(const const_reverse_iterator &it) const { return this->_it->content != it._it->content; };
+			bool operator==(const const_reverse_iterator &it) const { return this->_it->content == it.getElement()->content; };
+			bool operator!=(const const_reverse_iterator &it) const { return this->_it->content != it.getElement()->content; };
 
 			bool operator==(const reverse_iterator &it) const { return this->_it->content == it.getElement()->content; };
 			bool operator!=(const reverse_iterator &it) const { return this->_it->content != it.getElement()->content; };
@@ -537,6 +255,320 @@ namespace ft {
 
 			_List *getElement() const { return _it; }
 		};
+
+		//Constructors
+		explicit list (const allocator_type& alloc = allocator_type()): _size(0), _alloc(alloc), _end(0) {
+			_end = _allocator_rebind.allocate(1);
+			_end->content = _alloc.allocate(1);
+			_end->next = _end;
+			_end->prev = _end;
+			_size = 0;
+		}
+
+		explicit list (size_type n, const value_type& val = value_type(),
+		               const allocator_type& alloc = allocator_type()): _alloc(alloc), _size(0) {
+			_end = _allocator_rebind.allocate(1);
+			_end->content = _alloc.allocate(1);
+			_end->next = _end;
+			_end->prev = _end;
+			_size = 0;
+			for (; n != 0; n--)
+				push_back(val);
+		}
+
+		template <class InputIterator>
+		list (InputIterator first, InputIterator last, const allocator_type& alloc = allocator_type(),
+			  typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0): _alloc(alloc), _size(0) {
+			_end = _allocator_rebind.allocate(1);
+			_end->content = _alloc.allocate(1);
+			_end->next = _end;
+			_end->prev = _end;
+			_size = 0;
+			while (first != last) {
+				push_back(*first);
+				first++;
+			}
+		}
+
+		list (const list& x): _alloc(x._alloc), _end(0) {
+			_end = _allocator_rebind.allocate(1);
+			_end->content = _alloc.allocate(1);
+			_end->next = _end;
+			_end->prev = _end;
+			_size = 0;
+			*this = x;
+		}
+
+		~list() {
+			clear();
+			_deallocateNode(_end);
+		}
+
+		list& operator=(const list& x) {
+			if (!empty())
+					clear();
+			const_iterator it = x.begin();
+			const_iterator ite = x.end();
+			while (it != ite) {
+				push_back(*it);
+				it++;
+			}
+			return *this;
+		}
+
+		/* Iterators */
+		iterator begin() { return iterator(this->_end->next); }
+		const_iterator begin() const { return const_iterator(this->_end->next); }
+
+		iterator end() { return iterator(this->_end); }
+		const_iterator end() const { return const_iterator(this->_end); }
+
+		reverse_iterator rbegin() { return reverse_iterator(this->_end->prev); }
+		const_reverse_iterator rbegin() const { return const_reverse_iterator(this->_end->prev); }
+
+		reverse_iterator rend() { return reverse_iterator(this->_end); }
+		const_reverse_iterator rend() const { return const_reverse_iterator(this->_end); }
+
+		/* Capacity */
+		bool empty() const { return (this->_size == 0); }
+
+		size_type size() const { return this->_size; }
+
+		size_type max_size() const {
+			if (sizeof(value_type) == 1)
+				return ((size_t)(-1) / sizeof(value_type) / 2);
+			else
+				return ((size_t)(-1) / sizeof(value_type));
+		}
+
+		/* Element access */
+		reference front() { return *(_end->next->content); }
+		const_reference front() const { return *(_end->next->content); }
+
+		reference back() { return *(_end->prev->content); }
+		const_reference back() const { return *(_end->prev->content); }
+
+		/* Modifiers */
+		template <class InputIterator>
+		void assign (InputIterator first, InputIterator last,
+					 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+			clear();
+			insert(begin(), first, last);
+		}
+
+		void assign (size_type n, const value_type& val) {
+			clear();
+			insert(begin(), n, val);
+		}
+
+		void push_front(const value_type& val) {
+			_List* current = this->_createNode(val);
+			_insertList(current, this->_end, this->_end->next);
+		}
+
+		void pop_front() {
+			_List* tmp = _end->next;
+			_linkNode(tmp->prev, tmp->next);
+			_destroyNode(tmp);
+			_deallocateNode(tmp);
+			_size--;
+		}
+
+		void push_back (const value_type& val) {
+			_List* current = _createNode(val);
+			_insertList(current, _end->prev, _end);
+		}
+
+		void pop_back() {
+			_List* tmp = _end->prev;
+			_linkNode(tmp->prev, tmp->next);
+			_destroyNode(tmp);
+			_deallocateNode(tmp);
+			_size--;
+		}
+
+		iterator insert (iterator position, const value_type& val) {
+			_List* current = _createNode(val);
+			_List* it_pos = position.getElement();
+			_insertList(current, it_pos->prev, it_pos);
+			return iterator(current);
+		}
+
+		void insert (iterator position, size_type n, const value_type& val) {
+			for (; n != 0; n--)
+				insert(position, val);
+		}
+
+		template <class InputIterator>
+		void insert (iterator position, InputIterator first, InputIterator last,
+					 typename enable_if<std::__is_input_iterator<InputIterator>::value>::type* = 0) {
+			for (; first != last; ++first)
+				insert(position, *first);
+		}
+
+		iterator erase (iterator position) {
+			_List* it_pos = position.getElement();
+			_List* save_node = it_pos->next;
+			_linkNode(it_pos->prev, it_pos->next);
+			_destroyNode(it_pos);
+			_deallocateNode(it_pos);
+			_size--;
+			return iterator(save_node);
+		}
+		iterator erase (iterator first, iterator last) {
+			while (first != last)
+				erase(first++);
+			return last;
+		}
+
+		void swap (list& x) {
+            _List* tmp = _end;
+            _end = x._end;
+            x._end = tmp;
+            size_type size = _size;
+            _size = x._size;
+            x._size = size;
+		}
+
+		void resize (size_type n, value_type val = value_type()) {
+			while (n < _size)
+				erase(iterator(_end->prev));
+			while (_size < n)
+				push_back(val);
+		}
+
+		void clear() {
+			while (_size != 0)
+				pop_back();
+		}
+
+		/* Operations */
+		void splice (iterator position, list& x) {
+			_List*	tmp = position.getElement()->prev;
+			_List*	tmpPos = position.getElement();
+			_linkNode(tmp, x._end->next);
+			_linkNode(x._end->prev, tmpPos);
+			_linkNode(x._end, x._end);
+			_size += x._size;
+			x._size = 0;
+		}
+
+		void splice (iterator position, list& x, iterator i) {
+			_List*	curr_node = position.getElement();
+			_List*	from_pos = i.getElement();
+			_linkNode(from_pos->prev, from_pos->next);
+			_insertList(from_pos, curr_node->prev, curr_node);
+			_size += 1;
+			x._size -= 1;
+
+		}
+
+		void splice (iterator position, list& x, iterator first, iterator last) {
+			iterator tmp;
+			while (first != last) {
+				tmp = first++;
+				splice(position, x, tmp);
+			}
+		}
+
+		void remove (const value_type& val) {
+		    for (iterator it = begin(); it != end(); ++it) {
+		        if (*it == val)
+		            erase(it);
+		    }
+		}
+
+		template <class Predicate>
+		void remove_if (Predicate pred) {
+		    for (iterator it = begin(); it != end(); ++it) {
+		        if (pred(*it))
+		            erase(it);
+		    }
+		}
+
+		void unique() {
+			unique(_equal());
+		}
+
+		template <class BinaryPredicate>
+		void unique (BinaryPredicate binary_pred) {
+            iterator it = begin();
+            iterator next = ++begin();
+            while (next != end()) {
+                if (binary_pred(*it, *next))
+                    next = erase(next);
+                else {
+                    ++it;
+                    ++next;
+                }
+            }
+        }
+
+		void merge (list& x) {
+			merge(x, _less());
+		}
+
+		template <class Compare>
+		void merge (list& x, Compare comp) {
+			iterator xBegin = x.begin();
+			iterator mfirst = begin();
+			sort();
+			while (xBegin != x.end()) {
+				while (mfirst != end() && !comp(*xBegin, *mfirst))
+					mfirst++;
+				splice(mfirst, x, xBegin++);
+			}
+		}
+
+		void sort() {
+			sort(_less());
+		}
+
+		template <class Compare>
+		void sort (Compare comp) {
+			iterator	first;
+			iterator	second;
+			iterator	itend = end();
+
+			while (itend != ++begin()) {
+				first = begin();
+				second = ++begin();
+				while (second != itend) {
+					if (!comp(*first, *second)) {
+						_List *firstNode = first.getElement();
+						_List *secondNode = second.getElement();
+						_List *changeBuffer = firstNode->prev;
+						firstNode->prev = secondNode;
+						firstNode->next = secondNode->next;
+						firstNode->next->prev = firstNode;
+						secondNode->prev = changeBuffer;
+						secondNode->next = firstNode;
+						secondNode->prev->next = secondNode;
+						iterator tmp = first;
+						first = second;
+						second = tmp;
+					}
+					++first;
+					++second;
+				}
+				itend = first;
+			}
+		}
+
+		void reverse() {
+			_List* currentNode = begin().getElement();
+			_List* nextNode;
+			_List* tmp;
+			for (size_type i = 0; i <= _size; ++i) {
+				nextNode = currentNode->next;
+
+				tmp = currentNode->prev;
+				currentNode->prev = currentNode->next;
+				currentNode->next = tmp;
+
+				currentNode = nextNode;
+			}
+		}
 	};
 	template <class P, class AllocSwap>
 	void swap (ft::list<P,AllocSwap>& x, ft::list<P,AllocSwap>& y) {
