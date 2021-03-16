@@ -1,9 +1,7 @@
 #include "gtest/gtest.h"
-#include "../srcs/stack.hpp"
-#include "../srcs/list.hpp"
+#include "../includes/stack.hpp"
 #include <stack>
 #include <string>
-#include <iostream>
 #include <list>
 
 class StackFullTest : public testing::Test {

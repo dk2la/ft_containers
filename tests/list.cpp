@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "../srcs/list.hpp"
+#include "../includes/list.hpp"
 #include <list>
 #include <sstream>
 #include <cmath>

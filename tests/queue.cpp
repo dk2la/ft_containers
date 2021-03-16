@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "../srcs/queue.hpp"
+#include "../includes/queue.hpp"
 #include <queue>
 #include <list>
 #include <string>

@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "../srcs/map.hpp"
+#include "../includes/map.hpp"
 #include <map>
 #include <string>
 #include <stdexcept>
@@ -1405,6 +1405,5 @@ TEST_F(MapOperatorSqBracketsTest, fullTest) {
 		s[std::to_string(i)] = i % 2;
 		f[std::to_string(i)] = i % 2;
 		checkIfMapsAreEqual(f, s);
-//		std::cout << i << std::endl;
 	}
 }
